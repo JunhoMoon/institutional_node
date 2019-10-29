@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link rel="stylesheet" th:href="@{/css/main_layout.css}">
+    <link rel="stylesheet" th:href="@{/css/bootstrap.css}">
+
+    <link href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css" rel="stylesheet" id="bootstrap-css">
+    <script src="//netdna.bootstrapcdn.com/bootstrap/3.0.0/js/bootstrap.min.js"></script>
+    <script src="//code.jquery.com/jquery-1.11.1.min.js"></script>
+
+    <script type="text/javascript">
+        function serDefault() {
+            var type = $('#type').val();
+            if (type == 'Doctor'){
+                setFalse()
+                $('#h_datarecord').prop("checked", true);
+                $('#h_dataview').prop("checked", true);
+                $('#patientMapping').prop("checked", true);
+            } else if(type == 'Nurse'){
+                setFalse()
+                $('#patientMapping').prop("checked", true);
+                $('#a_history').prop("checked", true);
+            } else if(type == 'Asset Manager'){
+                setFalse()
+                $('#a_payment').prop("checked", true);
+                $('#a_withdraw').prop("checked", true);
+                $('#a_history').prop("checked", true);
+            } else if(type == 'Researcher'){
+                setFalse()
+                $('#h_search').prop("checked", true);
+            } else if(type == 'PHR System'){
+                setFalse()
+                $('#h_datarecord').prop("checked", true);
+                $('#h_dataview').prop("checked", true);
+                $('#patientMapping').prop("checked", true);
+            } else if(type == 'Node Admin'){
+                setFalse()
+                $('#managenode').prop("checked", true);
+                $('#patientMapping').prop("checked", true);
+            } else {
+                alert("Please select a type.")
+            }
+        }
+
+        function setFalse() {
+            $('#managenode').prop("checked", false);
+            $('#h_datarecord').prop("checked", false);
+            $('#h_dataview').prop("checked", false);
+            $('#patientMapping').prop("checked", false);
+            $('#a_payment').prop("checked", false);
+            $('#a_withdraw').prop("checked", false);
+            $('#a_history').prop("checked", false);
+            $('#h_search').prop("checked", false);
+        }
+
+        function confirm() {
+            var h_datarecord = 0;
+            var h_dataview = 0;
+            var a_payment = 0;
+            var a_withdraw = 0;
+            var a_history = 0;
+            var patientMapping = 0;
+            var h_search = 0;
+            var managenode = 0;
+
+            if ($('#h_datarecord').is(":checked")){
+                h_datarecord = 1
+            }
+            if ($('#h_dataview').is(":checked")){
+                h_dataview = 1
+            }
+            if ($('#a_payment').is(":checked")){
+                a_payment = 1
+            }
+            if ($('#a_withdraw').is(":checked")){
+                a_withdraw = 1
+            }
+            if ($('#a_history').is(":checked")){
+                a_history = 1
+            }
+            if ($('#patientMapping').is(":checked")){
+                patientMapping = 1
+            }
+            if ($('#h_search').is(":checked")){
+                h_search = 1
+            }
+            if ($('#managenode').is(":checked")){
+                managenode = 1
+            }
+
+            $.ajaxSettings.traditional = true;
+            $.ajax({
+                async: true,
+                type: 'POST',
+                url: "./manageMemberProcess",
+                dataType: "json",
+                data: {
+                    user_id: $('#user_id').text(),
+                    type: $('#type').val(),
+                    staticIp: $('#staticIp').val(),
+                    legacyid: $('#legacyid').val(),
+                    description: $('#description').val(),
+                    h_datarecord : h_datarecord,
+                    h_dataview : h_dataview,
+                    a_payment : a_payment,
+                    a_withdraw : a_withdraw,
+                    a_history : a_history,
+                    patientMapping : patientMapping,
+                    h_search : h_search,
+                    managenode : managenode
+                },
+                contentType: "application/x-www-form-urlencoded; charset=UTF-8",
+                success: function (data) {
+                    if (data.result == "true") {
+                        alert("You have successfully update.");
+                        window.history.back();
+                        return false;
+                    } else if(data.result == "false"){
+                        alert("You don't have authority");
+                        $(location).attr("href", "./loginPage");
+                        return false;
+                    } else {
+                        alert("Update failed\nPlease try again.\n" + "error : " + data.result);
+                        return false;
+                    }
+                },
+                error: function (error) {
+                    alert("error : " + error);
+                    return false;
+                }
+            })
+        }
+    </script>
+    <!------ Include the above in your HEAD tag ---------->
+</head>
+
+<input type="checkbox" name="mobile-nav" id="mobile-nav" class="burger-check" onchange="this.blur()">
+<label for="mobile-nav" class="burger white" tabindex="0"><span></span></label>
+<nav role="navigation" class="header-nav">
+    <div class="fixed-nav">
+        <div class="menu">
+            <ul>
+                <th:block th:if="${member.managenode} == 1">
+                    <li class="page_item page-item-2">
+                        <a href="./manageNodePage" class="waves-effect">
+                            Manage Member
+                        </a>
+                    </li>
+                </th:block>
+                <th:block th:if="${member.h_datarecord} == 1">
+                    <li class="page_item page-item-2">
+                        <a href="./healthRecordPage" class="waves-effect">
+                            Health Data Record
+                        </a>
+                    </li>
+                </th:block>
+                <th:block th:if="${member.h_dataview} == 1">
+                    <li class="page_item page-item-2">
+                        <a href="./healthViewPage" class="waves-effect">
+                            Health Data View
+                        </a>
+                    </li>
+                </th:block>
+                <th:block th:if="${member.patientMapping} == 1">
+                    <li class="page_item page-item-2">
+                        <a href="./patientMappingPage" class="waves-effect">
+                            Manage Patient
+                        </a>
+                    </li>
+                </th:block>
+                <th:block th:if="${member.h_search} == 1">
+                    <li class="page_item page-item-2">
+                        <a href="./healthSearchPage" class="waves-effect">
+                            Health Data Search
+                        </a>
+                    </li>
+                </th:block>
+                <th:block th:if="${member.a_payment} == 1">
+                    <li class="page_item page-item-2">
+                        <a href="./assetPaymentPage" class="waves-effect">
+                            Payment
+                        </a>
+                    </li>
+                </th:block>
+                <th:block th:if="${member.a_withdraw} == 1">
+                    <li class="page_item page-item-2">
+                        <a href="./assetWithdrawPage" class="waves-effect">
+                            Withdraw
+                        </a>
+                    </li>
+                </th:block>
+                <th:block th:if="${member.a_history} == 1">
+                    <li class="page_item page-item-2">
+                        <a href="./assetHistoryPage" class="waves-effect">
+                            Asset History
+                        </a>
+                    </li>
+                </th:block>
+            </ul>
+        </div>
+        <div class="user_info">
+            <div class="user_info_item2">
+                <h4 th:text="'Node Name : ' + ${node_kn}"></h4>
+                <h4 th:text="'User Name : ' +${member.user_name}"></h4>
+            </div>
+            <button type="button" class="user_info_item btn btn-primary" onclick="location.href='./logout'">Edit User
+                Info
+            </button>
+            <button type="button" class="user_info_item btn btn-primary" onclick="location.href='./logout'">Log Out
+            </button>
+        </div>
+    </div>
+</nav>
+<div class="container" th:switch="${memberdetail}">
+    <div th:case=null>
+        <h1>Manage Member Detail Page</h1>
+        <h1>There are no members</h1>
+    </div>
+    <div th:case="*" class="container" style="text-align: center">
+        <h2 style="margin-top: 90px; margin-bottom: 30px; text-align: center">Manage Member Detail Page</h2>
+        <div class="container" style="width: fit-content; text-align: left">
+            <fieldset>
+                <div class="control-group">
+                    <p style="float: left">ID : </p>
+                    <p id="user_id" name="user_id" placeholder="" th:text="${memberdetail.user_id}"></p>
+                </div>
+                <div class="control-group">
+                    <p id="user_name" name="user_name" placeholder="" th:text="'Name : '+${memberdetail.user_name}"></p>
+                </div>
+                <div class="control-group">
+                    <p id="email" name="email" placeholder="" th:text="'e-Mail : '+${memberdetail.email}"></p>
+                </div>
+                <div class="control-group">
+                    <label class="control-label" for="type">User TYPE :</label>
+                    <div class="controls">
+                        <select id="type" name="type" class="form-control" style="width: 170px; float: left">
+                            <option>Select Type</option>
+                            <option value="Doctor" th:selected="${memberdetail.type=='Doctor'}">Doctor</option>
+                            <option value="Nurse" th:selected="${memberdetail.type=='Nurse'}">Nurse</option>
+                            <option value="Asset Manager" th:selected="${memberdetail.type=='Asset Manager'}">Asset
+                                Manager
+                            </option>
+                            <option value="Researcher" th:selected="${memberdetail.type=='Researcher'}">Researcher
+                            </option>
+                            <option value="PHR System" th:selected="${memberdetail.type=='PHR System'}">PHR System
+                            </option>
+                            <option value="Node Admin" th:selected="${memberdetail.type=='Node Admin'}">Node Admin
+                            </option>
+                            <option value="Other" th:selected="${memberdetail.type=='Other'}">Other</option>
+                        </select>
+                        <button type="button" class="user_info_item btn btn-primary" onclick="serDefault()"
+                                style="margin-top: 0px; margin-right: 0px; margin-left: 5px">Set Default
+                        </button>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label class="control-label" for="staticip">User Static IP</label>
+                    <div class="controls">
+                        <input type="text" id="staticIp" name="staticIp" placeholder="" class="input-xlarge"
+                               th:value="${memberdetail.staticIp}">
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label class="control-label" for="legacyid">User Lagacy System ID </label>
+                    <div class="controls">
+                        <input type="text" id="legacyid" name="legacyid" placeholder="" class="input-xlarge"
+                               th:value="${memberdetail.legacyid}">
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label class="control-label" for="description">User Description</label>
+                    <div class="controls">
+                        <input type="text" id="description" name="description" placeholder="" class="input-xlarge"
+                               style="height: 100px; width: 100%" th:value="${memberdetail.description}">
+                    </div>
+                </div>
+                <h4>Authority of the function</h4>
+                <div class="control-group">
+                    <div class="switchToggle" style="float: left">
+                        <input type="checkbox" id="managenode" th:checked="${memberdetail.managenode}">
+                        <label for="managenode">Toggle</label>
+                    </div>
+                    <p style="margin-left: 77px; padding-top: 5px">Node Manager</p>
+                </div>
+                <div class="control-group">
+                    <div class="switchToggle" style="float: left">
+                        <input type="checkbox" id="h_datarecord" th:checked="${memberdetail.h_datarecord}">
+                        <label for="h_datarecord">Toggle</label>
+                    </div>
+                    <p style="margin-left: 77px; padding-top: 5px">Health Record</p>
+                </div>
+                <div class="control-group">
+                    <div class="switchToggle" style="float: left">
+                        <input type="checkbox" id="h_dataview" th:checked="${memberdetail.h_dataview}">
+                        <label for="h_dataview">Toggle</label>
+                    </div>
+                    <p style="margin-left: 77px; padding-top: 5px">Health View</p>
+                </div>
+                <div class="control-group">
+                    <div class="switchToggle" style="float: left">
+                        <input type="checkbox" id="patientMapping" th:checked="${memberdetail.patientMapping}">
+                        <label for="patientMapping">Toggle</label>
+                    </div>
+                    <p style="margin-left: 77px; padding-top: 5px">Patient Mapping</p>
+                </div>
+                <div class="control-group">
+                    <div class="switchToggle" style="float: left">
+                        <input type="checkbox" id="a_payment" th:checked="${memberdetail.a_payment}">
+                        <label for="a_payment">Toggle</label>
+                    </div>
+                    <p style="margin-left: 77px; padding-top: 5px">Asset Payment</p>
+                </div>
+                <div class="control-group">
+                    <div class="switchToggle" style="float: left">
+                        <input type="checkbox" id="a_withdraw" th:checked="${memberdetail.a_withdraw}">
+                        <label for="a_withdraw">Toggle</label>
+                    </div>
+                    <p style="margin-left: 77px; padding-top: 5px">Asset Withdraw</p>
+                </div>
+                <div class="control-group">
+                    <div class="switchToggle" style="float: left">
+                        <input type="checkbox" id="a_history" th:checked="${memberdetail.a_history}">
+                        <label for="a_history">Toggle</label>
+                    </div>
+                    <p style="margin-left: 77px; padding-top: 5px">Asset History</p>
+                </div>
+                <div class="control-group">
+                    <div class="switchToggle" style="float: left">
+                        <input type="checkbox" id="h_search" th:checked="${memberdetail.h_search}">
+                        <label for="h_search">Toggle</label>
+                    </div>
+                    <p style="margin-left: 77px; padding-top: 5px">Health Search</p>
+                </div>
+                <div class="control-group" style="margin-top: 10px">
+                    <!-- Button -->
+                    <div class="controls" style="text-align: center">
+                        <button class="btn btn-success" id="confirm_bt" name="confirm_bt" onclick="confirm()">Confirm</button>
+                    </div>
+                </div>
+            </fieldset>
+        </div>
+    </div>
+</div>
+</html>

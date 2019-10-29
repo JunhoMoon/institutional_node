@@ -1,0 +1,269 @@
+body {
+    margin: 0;
+    font-family: 'Raleway', 'Arial', sans-serif;
+}
+
+*,
+*:before,
+*:after {
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+}
+
+
+/*--------------------------------------
+ Sets the actionable area for the burger
+ including a label for usability
+--------------------------------------*/
+.burger,
+.burger:after,
+.burger *,
+.burger *:before,
+.burger *:after,
+.header-nav *,
+.header-nav *:before,
+.header-nav *:after {
+    -webkit-transition: all 0.3s;
+    transition: all 0.3s;
+}
+
+.burger {
+    cursor: pointer;
+    height: 60px;
+    margin-bottom: 0;
+    width: 60px;
+    z-index: 9001;
+    left: 0;
+    overflow: hidden;
+    position: fixed;
+    top: 0;
+    background: #08c;
+}
+
+.burger:after {
+    bottom: 7px;
+    color: #FFFFFF;
+    content: 'Menu';
+    font-size: 13px;
+    font-weight: 300;
+    left: 0;
+    position: absolute;
+    text-align: center;
+    width: 100%;
+}
+
+
+/*--------------------------------------
+ Creates the look of the burger icon
+ using the inner span and pseudo-elements
+--------------------------------------*/
+
+.burger span,
+.burger span:before,
+.burger span:after {
+    background: #FFFFFF;
+    border-radius: 0.2em;
+    height: 4px;
+    left: 10px;
+    position: absolute;
+    top: 22px;
+    -webkit-transition: all 0.3s;
+    transition: all 0.3s;
+    width: 40px;
+}
+
+
+/* Reset the left and create the pseudo-element */
+
+.burger span:before,
+.burger span:after {
+    content: '';
+    left: 0;
+}
+
+
+/* Top bar position */
+
+.burger span:before {
+    top: -8px;
+}
+
+
+/* Bottom bar position */
+
+.burger span:after {
+    top: 8px;
+}
+
+
+/* Get rid of more on action (IE9 or higher) */
+
+.burger-check:checked + .burger:after {
+    content: '';
+}
+
+
+/* Get rid of the middle bar on action (IE9 or higher) */
+
+.burger-check:checked + .burger span {
+    height: 0;
+    width: 0;
+}
+
+
+/* Moves the top and bottom bars to the middle on action (IE9 or higher) */
+
+.burger-check:checked + .burger span:before,
+.burger-check:checked + .burger span:after {
+    top: 6px;
+}
+
+
+/* Rotates the top bar on action with full browser support (IE9 or higher) */
+
+.burger-check:checked + .burger span:before {
+    -webkit-transform: rotate(225deg);
+    -ms-transform: rotate(225deg);
+    transform: rotate(225deg);
+}
+
+
+/* Rotates the bottom bar on action with full browser support (IE9 or higher) */
+
+.burger-check:checked + .burger span:after {
+    -webkit-transform: rotate(-225deg);
+    -ms-transform: rotate(225deg);
+    transform: rotate(-225deg);
+}
+
+#mobile-nav:focus + .burger,
+.burger:focus,
+.burger:hover {
+    background: rgba(0, 136, 204, 0.9);
+}
+
+.burger-check:checked + .burger {
+    width: 200px;
+}
+
+.burger-check:checked + .burger:after {
+    bottom: 18px;
+    content: 'Close Menu';
+    font-size: 20px;
+    padding-left: 30px;
+}
+
+#mobile-nav {
+    left: -9999px;
+    position: fixed;
+    top: 0;
+}
+
+.header-nav ul li a:active,
+.header-nav ul li a:focus,
+.header-nav ul li a:hover,
+#mobile-nav:focus + .burger,
+.burger:focus,
+.burger:hover {
+    background: rgba(0, 0, 0, 0.1);
+    outline: none;
+}
+
+.fixed-nav {
+    background: #08c;
+    height: 60px;
+    position: fixed;
+    width: 100%;
+    z-index: 9000;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+}
+
+.header-nav {
+    float: left;
+    height: 60px;
+    position: relative;
+    width: 100%;
+}
+
+.header-nav ul {
+    background: #FFF;
+    height: calc(100vh - 60px);
+    list-style: none;
+    margin: 0;
+    overflow-y: auto;
+    padding: 10px 0 0 0;
+    position: absolute;
+    -webkit-transform: translateX(-110%);
+    transform: translateX(-110%);
+    -webkit-transition-timing-function: cubic-bezier(0.250, 0.460, 0.450, 0.940);
+    -moz-transition-timing-function: cubic-bezier(0.250, 0.460, 0.450, 0.940);
+    -o-transition-timing-function: cubic-bezier(0.250, 0.460, 0.450, 0.940);
+    transition-timing-function: cubic-bezier(0.250, 0.460, 0.450, 0.940);
+    width: 300px;
+    box-shadow: 3px 3px 5px rgba(0, 0, 0, 0.075);
+    top: 100%;
+    z-index: 1;
+}
+
+.burger-check:checked ~ .header-nav ul {
+    -webkit-transform: translateX(0);
+    transform: translateX(0);
+}
+
+.header-nav ul li {
+    float: left;
+    position: relative;
+    width: 100%;
+}
+
+.header-nav ul li a {
+    color: rgba(0, 0, 0, 0.79);
+    display: block;
+    float: left;
+    font-size: 14px;
+    font-weight: 400;
+    letter-spacing: 0.75px;
+    line-height: 24px;
+    margin-left: 0;
+    overflow: hidden;
+    padding: 12px 60px 12px 12px;
+    position: relative;
+    text-decoration: none;
+    width: 100%;
+}
+
+.user_info_item{
+     float: left;
+     margin: 10px 15px 0 0;
+     color: white;
+ }
+.user_info_item2{
+    height: 60px;
+    float: left;
+    margin: 0 15px 0 0;
+    color: white;
+}
+.user_info_item2 h4{
+    margin: 7px 0px 7px;
+}
+.user_info{
+    height: 60px;
+    position: absolute;
+    top: 0px;
+    right: 0px;
+    margin: 0px;
+}
+
+
+.outerDivFull { margin:50px; }
+
+.switchToggle input[type=checkbox]{height: 0; width: 0; visibility: hidden; position: absolute; }
+.switchToggle label {cursor: pointer; text-indent: -9999px; width: 70px; max-width: 70px; height: 30px; background: #d1d1d1; display: block; border-radius: 100px; position: relative; }
+.switchToggle label:after {content: ''; position: absolute; top: 2px; left: 2px; width: 26px; height: 26px; background: #fff; border-radius: 90px; transition: 0.3s; }
+.switchToggle input:checked + label, .switchToggle input:checked + input + label  {background: #3e98d3; }
+.switchToggle input + label:before, .switchToggle input + input + label:before {content: 'No'; position: absolute; top: 5px; left: 35px; width: 26px; height: 26px; border-radius: 90px; transition: 0.3s; text-indent: 0; color: #fff; }
+.switchToggle input:checked + label:before, .switchToggle input:checked + input + label:before {content: 'Yes'; position: absolute; top: 5px; left: 10px; width: 26px; height: 26px; border-radius: 90px; transition: 0.3s; text-indent: 0; color: #fff; }
+.switchToggle input:checked + label:after, .switchToggle input:checked + input + label:after {left: calc(100% - 2px); transform: translateX(-100%); }
+.switchToggle label:active:after {width: 60px; }
+.toggle-switchArea { margin: 10px 0 10px 0; }

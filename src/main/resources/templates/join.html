@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link rel="stylesheet" th:href="@{/css/bootstrap.css}">
+    <link rel="stylesheet" th:href="@{/css/common.css}">
+    <script src="//code.jquery.com/jquery.min.js"></script>
+    <script type="text/javascript" th:src="@{/js/sha512.min.js}"></script>
+
+    <link href="//netdna.bootstrapcdn.com/twitter-bootstrap/2.3.2/css/bootstrap-combined.min.css" rel="stylesheet"
+          id="bootstrap-css">
+    <script src="//netdna.bootstrapcdn.com/twitter-bootstrap/2.3.2/js/bootstrap.min.js"></script>
+
+    <script type="text/javascript">
+        var checkIDResult = 0;
+
+        $(function () {
+            $('#checkIDbt').click(function () {
+                var userid = $('#user_id').val();
+
+                if (checkIDResult == 0) {
+                    if (userid != "") {
+                        var param = '?user_id=' + userid;
+
+                        $.ajax({
+                            async: true,
+                            type: 'POST',
+                            url: "./checkUserID" + param,
+                            dataType: "json",
+                            contentType: "application/json; charset=UTF-8",
+                            success: function (data) {
+                                if (data.cnt != "0") {
+                                    alert("I have the same ID.");
+                                    $('#user_id').val("");
+                                    $('#user_id').focus();
+                                    $('#user_id').prop('disabled', false);
+
+                                    checkIDResult = 0;
+                                    return false;
+                                } else {
+                                    $('#user_id').prop('disabled', true);
+                                    $('#checkIDbt').html("Reset");
+                                    checkIDResult = 1;
+                                    return false;
+                                }
+                            },
+                            error: function (error) {
+                                alert("error : " + error);
+                                return false;
+                            }
+                        })
+                    }
+                } else {
+                    $('#user_id').val("");
+                    $('#user_id').focus();
+                    $('#user_id').prop('disabled', false);
+                    $('#checkIDbt').html("Check");
+                    checkIDResult = 0;
+                }
+            })
+
+
+            $('#join_bt').click(function () {
+                if (checkIDResult == 0) {
+                    alert("Please check ID.");
+                    return false;
+                } else if ($('#user_pw').val() == "") {
+                    alert("Please enter a password.");
+                    $('#user_password').focus();
+                    return false;
+                } else if ($('#user_pw_check').val() == "") {
+                    alert("Please re-enter a password.");
+                    $('#user_password_check').focus();
+                    return false;
+                } else if ($('#user_pw').val() != $('#user_pw_check').val()) {
+                    alert("Password is different.");
+                    $('#user_password_check').focus();
+                    return false;
+                } else if ($('#user_name').val() == "") {
+                    alert("Please enter name.");
+                    $('#user_name').focus();
+                    return false;
+                } else if ($('#email').val() == "") {
+                    alert("Please enter e-Mail.");
+                    $('#email').focus();
+                    return false;
+                } else if ($('#type').val() == "Select Type") {
+                    alert("Please select type.");
+                    $('#type').focus();
+                    return false;
+                } else {
+                    $('#user_id').prop('disabled', false);
+
+                    $.ajaxSettings.traditional = true;
+                    $.ajax({
+                        async: true,
+                        type: 'POST',
+                        url: "./joinProcess",
+                        dataType: "json",
+                        data: {
+                            user_id: $('#user_id').val(),
+                            user_name: $('#user_name').val(),
+                            email: $('#email').val(),
+                            type: $('#type').val(),
+                            staticIp: $('#staticIp').val(),
+                            legacyid: $('#legacyid').val(),
+                            description: $('#description').val(),
+                            user_pw: hex_sha512($('#user_pw').val()).toString()
+                        },
+                        contentType: "application/x-www-form-urlencoded; charset=UTF-8",
+                        success: function (data) {
+                            if (data.result == "true") {
+                                alert("You have successfully signed up.");
+                                $(location).attr("href", "./loginPage");
+                                return false;
+                            } else {
+                                alert("Join failed\nPlease try again.\n" + "error : " + data.result);
+                                $('#user_id').val("");
+                                $('#user_id').focus();
+                                $('#user_id').prop('disabled', false);
+                                $('#checkIDbt').html("Check");
+                                checkIDResult = 0;
+                                return false;
+                            }
+                        },
+                        error: function (error) {
+                            alert("error : " + error);
+                            $('#user_id').val("");
+                            $('#user_id').focus();
+                            $('#user_id').prop('disabled', false);
+                            $('#checkIDbt').html("Check");
+                            checkIDResult = 0;
+                            return false;
+                        }
+                    })
+
+                }
+            });
+        });
+
+        // 회원가입 버튼 클릭시 회원가입 화면으로 이동
+        function goLoginForm() {
+            location.href = "./loginPage";
+        }
+    </script>
+</head>
+<!------ Include the above in your HEAD tag ---------->
+<div class="container" style="width: fit-content">
+    <fieldset>
+        <div id="legend">
+            <legend class="">Register</legend>
+        </div>
+        <div class="control-group">
+            <h4>Red label is required.</h4>
+        </div>
+        <div class="control-group">
+            <label class="control-label" for="user_id" style="color: red">User ID</label>
+            <div class="controls">
+                <input type="text" id="user_id" name="user_id" placeholder="" class="input-xlarge">
+                <button type="button" class="btn btn-success" id="checkIDbt">Check</button>
+                <p class="help-block">User ID can contain any letters or numbers, without spaces</p>
+            </div>
+        </div>
+        <div class="control-group">
+            <label class="control-label" for="user_pw" style="color: red">User PW</label>
+            <div class="controls">
+                <input type="password" id="user_pw" name="user_pw" placeholder="" class="input-xlarge">
+                <p class="help-block">User Password can contain any letters or numbers</p>
+            </div>
+        </div>
+        <div class="control-group">
+            <label class="control-label" for="user_pw_check" style="color: red">User PW Check</label>
+            <div class="controls">
+                <input type="password" id="user_pw_check" name="user_pw_check" placeholder="" class="input-xlarge">
+                <p class="help-block">Please enter your password again.</p>
+            </div>
+        </div>
+        <div class="control-group">
+            <label class="control-label" for="user_name" style="color: red">User Name</label>
+            <div class="controls">
+                <input type="text" id="user_name" name="user_name" placeholder="" class="input-xlarge">
+                <p class="help-block">User name can contain any letters</p>
+            </div>
+        </div>
+        <div class="control-group">
+            <label class="control-label" for="email" style="color: red">User email</label>
+            <div class="controls">
+                <input type="text" id="email" name="email" placeholder="" class="input-xlarge">
+                <p class="help-block">Please provide your E-mail</p>
+            </div>
+        </div>
+        <div class="control-group">
+            <label class="control-label" for="type" style="color: red">User TYPE</label>
+            <div class="controls">
+                <select id="type" name="type" class="form-control" style="width: 270px">
+                    <option>Select Type</option>
+                    <option value="Doctor">Doctor</option>
+                    <option value="Nurse">Nurse</option>
+                    <option value="Asset Manager">Asset Manager</option>
+                    <option value="Researcher">Researcher</option>
+                    <option value="PHR System">PHR System</option>
+                    <option value="Node Admin">Node Admin</option>
+                    <option value="Other">Other</option>
+                </select>
+                <p class="help-block">Select User Type</p>
+            </div>
+        </div>
+        <div class="control-group">
+            <label class="control-label" for="staticIp">User Static IP</label>
+            <div class="controls">
+                <input type="text" id="staticIp" name="staticIp" placeholder="" class="input-xlarge">
+                <p class="help-block">Enter your static ip if you have one.</p>
+            </div>
+        </div>
+        <div class="control-group">
+            <label class="control-label" for="legacyid">User Lagacy System ID </label>
+            <div class="controls">
+                <input type="text" id="legacyid" name="legacyid" placeholder="" class="input-xlarge">
+                <p class="help-block">Enter your Lagacy system ID if you have one.</p>
+            </div>
+        </div>
+        <div class="control-group">
+            <label class="control-label" for="description">User Description</label>
+            <div class="controls">
+                <input type="text" id="description" name="description" placeholder="" class="input-xlarge"
+                       style="height: 100px">
+            </div>
+        </div>
+
+        <div class="control-group">
+            <div class="controls">
+                <button class="btn btn-success" id="join_bt" name="join_bt">Register</button>
+                <button class="btn btn-success" onclick="goLoginForm()">Cancel</button>
+            </div>
+        </div>
+    </fieldset>
+</div>
+</html>
