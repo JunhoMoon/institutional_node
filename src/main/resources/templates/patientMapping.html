@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link rel="stylesheet" th:href="@{/css/main_layout.css}">
+
+    <link href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css" rel="stylesheet" id="bootstrap-css">
+    <script src="//netdna.bootstrapcdn.com/bootstrap/3.0.0/js/bootstrap.min.js"></script>
+    <script src="//code.jquery.com/jquery-1.11.1.min.js"></script>
+
+    <script type="text/javascript">
+        function goPage(no) {
+            $('#page').val(no)
+            $('#patientMappingPage').submit()
+        }
+
+        function goDetail(node_kn) {
+            $('#detail_node_kn').val(node_kn)
+            $('#patientMappingDetailPage').submit()
+        }
+    </script>
+    <!------ Include the above in your HEAD tag ---------->
+</head>
+
+<input type="checkbox" name="mobile-nav" id="mobile-nav" class="burger-check" onchange="this.blur()">
+<label for="mobile-nav" class="burger white" tabindex="0"><span></span></label>
+<nav role="navigation" class="header-nav">
+    <div class="fixed-nav">
+        <div class="menu">
+            <ul>
+                <th:block th:if="${member.managenode} == 1">
+                    <li class="page_item page-item-2">
+                        <a href="./manageNodePage" class="waves-effect">
+                            Manage Member
+                        </a>
+                    </li>
+                </th:block>
+                <th:block th:if="${member.h_datarecord} == 1">
+                    <li class="page_item page-item-2">
+                        <a href="./healthRecordPage" class="waves-effect">
+                            Health Data Record
+                        </a>
+                    </li>
+                </th:block>
+                <th:block th:if="${member.h_dataview} == 1">
+                    <li class="page_item page-item-2">
+                        <a href="./healthViewPage" class="waves-effect">
+                            Health Data View
+                        </a>
+                    </li>
+                </th:block>
+                <th:block th:if="${member.patientMapping} == 1">
+                    <li class="page_item page-item-2">
+                        <a href="./patientMappingPage" class="waves-effect">
+                            Manage Patient
+                        </a>
+                    </li>
+                </th:block>
+                <th:block th:if="${member.h_search} == 1">
+                    <li class="page_item page-item-2">
+                        <a href="./healthSearchPage" class="waves-effect">
+                            Health Data Search
+                        </a>
+                    </li>
+                </th:block>
+                <th:block th:if="${member.a_payment} == 1">
+                    <li class="page_item page-item-2">
+                        <a href="./assetPaymentPage" class="waves-effect">
+                            Payment
+                        </a>
+                    </li>
+                </th:block>
+                <th:block th:if="${member.a_withdraw} == 1">
+                    <li class="page_item page-item-2">
+                        <a href="./assetWithdrawPage" class="waves-effect">
+                            Withdraw
+                        </a>
+                    </li>
+                </th:block>
+                <th:block th:if="${member.a_history} == 1">
+                    <li class="page_item page-item-2">
+                        <a href="./assetHistoryPage" class="waves-effect">
+                            Asset History
+                        </a>
+                    </li>
+                </th:block>
+            </ul>
+        </div>
+        <div class="user_info">
+            <div class="user_info_item2">
+                <h4 th:text="'Node Name : ' + ${node_kn}"></h4>
+                <h4 th:text="'User Name : ' + ${member.user_name}"></h4>
+            </div>
+            <button type="button" class="user_info_item btn btn-primary" onclick="location.href='./logout'">Edit User
+                Info
+            </button>
+            <button type="button" class="user_info_item btn btn-primary" onclick="location.href='./logout'">Log Out
+            </button>
+        </div>
+    </div>
+</nav>
+<div class="container" th:switch="${totalPages}">
+    <div th:case="0">
+        <h1>Patient Mapping Page</h1>
+        <h1>There are no patient</h1>
+        <button type="button" class="btn btn-primary" onclick="location.href='./addPatientMappingPage'">Add Mapping</button>
+    </div>
+    <div th:case="*" class="container" style="text-align: center">
+        <h2 style="margin-top: 90px; margin-bottom: 30px; text-align: center">Patient Mapping Page</h2>
+        <table class="table table-hover">
+            <thead>
+            <tr>
+                <td scope="col">Patient No</td>
+                <td scope="col">Node ID</td>
+                <td scope="col">Reg. Date</td>
+                <td scope="col">Accepted</td>
+            </tr>
+            </thead>
+            <tbody>
+            <th:block th:each="nodeMapping : ${nodeMappingList}">
+                <tr th:data-id="${nodeMapping.node_kn}" onclick="goDetail(this.getAttribute('data-id'))" style="cursor: pointer">
+                    <td th:text="${nodeMapping.patient_no}"></td>
+                    <td th:text="${nodeMapping.node_kn}"></td>
+                    <td th:text="${nodeMapping.reg_date}"></td>
+                    <td th:if="${nodeMapping.accepted} != null" th:text="${nodeMapping.accepted}"></td>
+                    <td th:unless="${nodeMapping.accepted} != null">false</td>
+                </tr>
+            </th:block>
+            </tbody>
+        </table>
+        <button type="button" class="btn btn-primary" onclick="location.href='./addPatientMappingPage'">Add Mapping</button>
+        <div>
+            <form action="./patientMappingDetailPage" id="patientMappingDetailPage" method="post">
+                <input type="hidden" name="node_kn" id="detail_node_kn">
+            </form>
+            <form action="./patientMappingPage" id="patientMappingPage">
+                <input type="text" class="form-control" placeholder="Key word" id="inputDefault" name="key_word"
+                       style="float: left; width: 200px" th:value="${key_word}">
+                <input type="hidden" name="page" id="page">
+                <button type="submit" class="btn btn-primary" style="float: left">Search</button>
+            </form>
+            <ul class="pagination" style="float: left; margin: 0px; position: absolute">
+                <th:block th:if="${nowPage > 3}">
+                    <li class="page-item">
+                        <a th:if="${nowPage-5 > 0}" class="page-link" th:onclick="|javascript:goPage(${nowPage-5})|">&laquo;</a>
+                        <a th:unless="${nowPage-5 > 0}" class="page-link"
+                           th:onclick="|javascript:goPage(1)|">&laquo;</a>
+                    </li>
+                </th:block>
+                <th:block th:if="${nowPage > 2}">
+                    <li class="page-item">
+                        <a class="page-link" th:onclick="|javascript:goPage(${nowPage-2})|" th:text="${nowPage-2}"></a>
+                    </li>
+                </th:block>
+                <th:block th:if="${nowPage > 1}">
+                    <li class="page-item">
+                        <a class="page-link" th:onclick="|javascript:goPage(${nowPage-1})|" th:text="${nowPage-1}"></a>
+                    </li>
+                </th:block>
+                <li class="page-item active active">
+                    <a class="page-link" href="#" th:text="${nowPage}"></a>
+                </li>
+                <th:block th:if="${totalPages > nowPage}">
+                    <li class="page-item">
+                        <a class="page-link" th:onclick="|javascript:goPage(${nowPage+1})|" th:text="${nowPage+1}"></a>
+                    </li>
+                </th:block>
+                <th:block th:if="${totalPages > nowPage+1}">
+                    <li class="page-item">
+                        <a class="page-link" th:onclick="|javascript:goPage(${nowPage+2})|" th:text="${nowPage+2}"></a>
+                    </li>
+                </th:block>
+                <th:block th:if="${totalPages > nowPage+2}">
+                    <li class="page-item">
+                        <a th:if="${totalPages > nowPage+5}" class="page-link"
+                           th:onclick="|javascript:goPage(${nowPage+5})|">&raquo;</a>
+                        <a th:unless="${totalPages > nowPage+5}" class="page-link"
+                           th:onclick="|javascript:goPage(${totalPages})|">&raquo;</a>
+                    </li>
+                </th:block>
+            </ul>
+        </div>
+    </div>
+</div>
+</html>

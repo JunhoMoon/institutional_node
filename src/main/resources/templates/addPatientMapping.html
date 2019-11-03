@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link rel="stylesheet" th:href="@{/css/main_layout.css}">
+    <link rel="stylesheet" th:href="@{/css/bootstrap.css}">
+
+    <link href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css" rel="stylesheet" id="bootstrap-css">
+    <script src="//netdna.bootstrapcdn.com/bootstrap/3.0.0/js/bootstrap.min.js"></script>
+    <script src="//code.jquery.com/jquery-1.11.1.min.js"></script>
+
+    <script type="text/javascript">
+        var getPatient = false
+        var patient_no
+        function getPatientInfo() {
+            if (!getPatient){
+                $.ajaxSettings.traditional = true;
+                $.ajax({
+                    async: true,
+                    type: 'POST',
+                    url: "./getPatientInfo",
+                    data:"patient_no="+$('#patient_no').val(),
+                    contentType: "application/x-www-form-urlencoded; charset=UTF-8",
+                    success: function (data) {
+                        if (data.result == "true") {
+                            $('#patient_name').text("Name : "+data.patient_name);
+                            $('#birthday').text("Birth Day : " +data.birthday);
+                            getPatient = true;
+                            patient_no = $('#patient_no').val();
+                            $('#patient_no').attr("disabled",true).attr("readonly",false);
+                            $('#search_bt').text("Reset");
+                            return false;
+                        } else if(data.result == "false"){
+                            alert("You don't have authority");
+                            $(location).attr("href", "./loginPage");
+                            return false;
+                        } else {
+                            $('#patient_name').text("Name : ");
+                            $('#birthday').text("Birth Day : ");
+                            alert("Get Patient Infor failed\nPlease try again.\n" + "error : " + data.result);
+                            return false;
+                        }
+                    },
+                    error: function (error) {
+                        $('#patient_name').text("Name : ");
+                        $('#birthday').text("Birth Day : ");
+                        alert("error : " + error);
+                        return false;
+                    }
+                })
+            } else{
+                $('#patient_name').text("Name : ");
+                $('#birthday').text("Birth Day : ");
+                getPatient = false;
+                $('#search_bt').text("Search")
+                $('#patient_no').attr("disabled",false).attr("readonly",false);
+                $('#patient_no').val("")
+                patient_no = null
+            }
+        }
+
+        function confirm() {
+            $.ajaxSettings.traditional = true;
+            $.ajax({
+                async: true,
+                type: 'POST',
+                url: "./addPatientMappingProcess",
+                dataType: "json",
+                data: {
+                    patient_no: patient_no,
+                    node_kn: $('#node_kn').val(),
+                    description: $('#description').val()
+                },
+                contentType: "application/x-www-form-urlencoded; charset=UTF-8",
+                success: function (data) {
+                    if (data.result == "true") {
+                        alert("You have successfully update.");
+                        $(location).attr("href", "./patientMappingPage");
+                        return false;
+                    } else if(data.result == "false"){
+                        alert("You don't have authority");
+                        $(location).attr("href", "./loginPage");
+                        return false;
+                    } else {
+                        alert("Update failed\nPlease try again.\n" + "error : " + data.result);
+                        return false;
+                    }
+                },
+                error: function (error) {
+                    alert("error : " + error);
+                    return false;
+                }
+            })
+        }
+    </script>
+    <!------ Include the above in your HEAD tag ---------->
+</head>
+
+<input type="checkbox" name="mobile-nav" id="mobile-nav" class="burger-check" onchange="this.blur()">
+<label for="mobile-nav" class="burger white" tabindex="0"><span></span></label>
+<nav role="navigation" class="header-nav">
+    <div class="fixed-nav">
+        <div class="menu">
+            <ul>
+                <th:block th:if="${member.managenode} == 1">
+                    <li class="page_item page-item-2">
+                        <a href="./manageNodePage" class="waves-effect">
+                            Manage Member
+                        </a>
+                    </li>
+                </th:block>
+                <th:block th:if="${member.h_datarecord} == 1">
+                    <li class="page_item page-item-2">
+                        <a href="./healthRecordPage" class="waves-effect">
+                            Health Data Record
+                        </a>
+                    </li>
+                </th:block>
+                <th:block th:if="${member.h_dataview} == 1">
+                    <li class="page_item page-item-2">
+                        <a href="./healthViewPage" class="waves-effect">
+                            Health Data View
+                        </a>
+                    </li>
+                </th:block>
+                <th:block th:if="${member.patientMapping} == 1">
+                    <li class="page_item page-item-2">
+                        <a href="./patientMappingPage" class="waves-effect">
+                            Manage Patient
+                        </a>
+                    </li>
+                </th:block>
+                <th:block th:if="${member.h_search} == 1">
+                    <li class="page_item page-item-2">
+                        <a href="./healthSearchPage" class="waves-effect">
+                            Health Data Search
+                        </a>
+                    </li>
+                </th:block>
+                <th:block th:if="${member.a_payment} == 1">
+                    <li class="page_item page-item-2">
+                        <a href="./assetPaymentPage" class="waves-effect">
+                            Payment
+                        </a>
+                    </li>
+                </th:block>
+                <th:block th:if="${member.a_withdraw} == 1">
+                    <li class="page_item page-item-2">
+                        <a href="./assetWithdrawPage" class="waves-effect">
+                            Withdraw
+                        </a>
+                    </li>
+                </th:block>
+                <th:block th:if="${member.a_history} == 1">
+                    <li class="page_item page-item-2">
+                        <a href="./assetHistoryPage" class="waves-effect">
+                            Asset History
+                        </a>
+                    </li>
+                </th:block>
+            </ul>
+        </div>
+        <div class="user_info">
+            <div class="user_info_item2">
+                <h4 th:text="'Node Name : ' + ${node_kn}"></h4>
+                <h4 th:text="'User Name : ' +${member.user_name}"></h4>
+            </div>
+            <button type="button" class="user_info_item btn btn-primary" onclick="location.href='./logout'">Edit User
+                Info
+            </button>
+            <button type="button" class="user_info_item btn btn-primary" onclick="location.href='./logout'">Log Out
+            </button>
+        </div>
+    </div>
+</nav>
+<div class="container">
+    <div class="container" style="text-align: center">
+        <h2 style="margin-top: 90px; margin-bottom: 30px; text-align: center">Patient Mapping Add Page</h2>
+        <div class="container" style="width: fit-content; text-align: left">
+            <fieldset>
+                <div class="control-group" style="margin-bottom: 3px; vertical-align: middle">
+                    <p>Patient No : </p>
+                    <div class="controls" style="float: left; padding-top: 3px">
+                        <input type="text" id="patient_no" name="patient_no" placeholder="" class="input-xlarge">
+                    </div>
+                    <button type="button" id="search_bt" name="search_bt" class="btn btn-primary" onclick="getPatientInfo()">Search</button>
+                </div>
+                <div class="control-group">
+                    <p>Node Kick Name : </p>
+                    <div class="controls">
+                        <input type="text" id="node_kn" name="node_kn" placeholder="" class="input-xlarge">
+                    </div>
+                </div>
+                <div class="control-group">
+                    <div class="controls">
+                        <p id="patient_name" name="patient_name">Name : </p>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <p id="birthday" name="birthday" placeholder="">Birth Day : </p>
+                </div>
+                <div class="control-group">
+                    <label class="control-label" for="description">User Description</label>
+                    <div class="controls">
+                        <input type="text" id="description" name="description" placeholder="" class="input-xlarge"
+                               style="height: 100px; width: 100%">
+                    </div>
+                </div>
+                <div class="control-group" style="margin-top: 10px">
+                    <!-- Button -->
+                    <div class="controls" style="text-align: center">
+                        <button class="btn btn-success" id="confirm_bt" name="confirm_bt" onclick="confirm()">Add</button>
+                    </div>
+                </div>
+            </fieldset>
+        </div>
+    </div>
+</div>
+</html>

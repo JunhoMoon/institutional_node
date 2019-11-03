@@ -1,6 +1,5 @@
 package com.hims.institutional_node
 
-import com.hims.institutional_node.Model.Communication_Key
 import java.nio.charset.StandardCharsets
 import java.security.*
 import java.security.spec.PKCS8EncodedKeySpec
@@ -10,24 +9,7 @@ import javax.crypto.Cipher
 
 object EncryptionRSA{
     const val CRYPTO_METHOD = "RSA"
-    const val CRYPTO_BITS = 2048
     const val CRYPTO_TRANSFORM = "RSA/ECB/PKCS1Padding"
-
-//    private const val CIPHER_ALGORITHM =
-//            "${KeyProperties.KEY_ALGORITHM_RSA}/" +
-//                    "${KeyProperties.BLOCK_MODE_ECB}/" +
-//                    KeyProperties.ENCRYPTION_PADDING_RSA_PKCS1
-
-//    internal fun generateKeyPair(): Communication_Key {
-//        val sr = SecureRandom()
-//        val kp: KeyPair
-//        val kpg: KeyPairGenerator = KeyPairGenerator.getInstance(CRYPTO_METHOD)
-//
-//        kpg.initialize(CRYPTO_BITS, sr)
-//        kp = kpg.genKeyPair()
-//
-//        return Communication_Key(kp.public.key(), kp.private.key(),null)
-//    }
 
     fun PublicKey.key() = Base64.getEncoder().encodeToString(this.encoded)
     fun PrivateKey.key() = Base64.getEncoder().encodeToString(this.encoded)
@@ -91,5 +73,24 @@ object EncryptionRSA{
         decryptedBytes = cipher.doFinal(Base64.getDecoder().decode(message))
 
         return String(decryptedBytes)
+    }
+
+    fun SignKey(content:String, privateKey: PrivateKey):String{
+        var sha = EncryptionSHA.encryptSha(content)
+        var sig = Signature.getInstance("SHA1WithRSA")
+        sig.initSign(privateKey)
+        sig.update(Base64.getDecoder().decode(sha))
+        var sign = sig.sign()
+        return Base64.getEncoder().encodeToString(sign)
+    }
+
+    fun VerifyKey(content:String, publicKey: String, sign:String):Boolean{
+        var publicKey = StringtoPublicKey(publicKey)
+        var sha = EncryptionSHA.encryptSha(content)
+        var sig = Signature.getInstance("SHA1WithRSA")
+        sig.initVerify(publicKey)
+        sig.update(Base64.getDecoder().decode(sha))
+        var sign = Base64.getDecoder().decode(sign)
+        return sig.verify(sign)
     }
 }

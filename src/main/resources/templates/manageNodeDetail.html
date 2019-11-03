@@ -115,7 +115,7 @@
                 success: function (data) {
                     if (data.result == "true") {
                         alert("You have successfully update.");
-                        window.history.back();
+                        $(location).attr("href", "./manageNodePage");
                         return false;
                     } else if(data.result == "false"){
                         alert("You don't have authority");

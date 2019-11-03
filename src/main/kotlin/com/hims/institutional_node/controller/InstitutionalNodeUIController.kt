@@ -1,13 +1,22 @@
 package com.hims.institutional_node
 
-import com.hims.institutional_node.Model.Member
+import com.hims.Central_Server.message.ParsingJSON
+import com.hims.institutional_node.Model.*
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
+import org.springframework.http.converter.FormHttpMessageConverter
+import org.springframework.http.converter.HttpMessageConverter
+import org.springframework.http.converter.StringHttpMessageConverter
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter
 import org.springframework.stereotype.Controller
+import org.springframework.util.LinkedMultiValueMap
 import org.springframework.web.bind.annotation.*
+import org.springframework.web.client.RestTemplate
 import org.springframework.web.servlet.ModelAndView
+import java.sql.Timestamp
+import java.util.ArrayList
 import javax.annotation.Resource
 import javax.servlet.http.HttpSession
 
@@ -19,6 +28,16 @@ class InstitutionalNodeUIController {
     internal lateinit var memberDAO: MemberDAO
     @Autowired
     internal lateinit var memberPage: MemberPage
+    @Autowired
+    internal lateinit var nodeMappingDAO: NodeMappingDAO
+    @Autowired
+    internal lateinit var nodeMappingPage: NodeMappingPage
+    @Autowired
+    internal lateinit var primaryPhysicianDAO: PrimaryPhysicianDAO
+    @Autowired
+    internal lateinit var messageStackDAO: MessageStackDAO
+    @Autowired
+    internal lateinit var testPatientDAO: TestPatientDAO
 
     @RequestMapping(value = "loginPage", method = [RequestMethod.GET])
     private fun loginPage(session: HttpSession): ModelAndView {
@@ -159,7 +178,6 @@ class InstitutionalNodeUIController {
     @RequestMapping(value = "manageMemberProcess", method = [RequestMethod.POST])
     @ResponseBody
     private fun manageMemberProcess(@ModelAttribute memberdetail: Member, session: HttpSession): Map<String, String> {
-        println(memberdetail.toString())
         val result: MutableMap<String, String> = mutableMapOf()
         var member: Member? = null
         if (session.getAttribute("member") !=null){
@@ -242,7 +260,7 @@ class InstitutionalNodeUIController {
         return mv
     }
 
-    //구현중
+    //환자 맵핑
     @RequestMapping(value = "patientMappingPage", method = [RequestMethod.POST])
     private fun patientMappingPage(@RequestParam("page", required = false, defaultValue = "1") page: Int,
                                @RequestParam("key_word", required = false, defaultValue = "") key_word: String,
@@ -257,20 +275,209 @@ class InstitutionalNodeUIController {
             mv.addObject("member", member)
             mv.addObject("node_kn", NodeInfoObject.node_kn)
 
-            var memberPage = memberPage.getMemberList(key_word, PageRequest.of(page-1, 10, Sort.by(Sort.Direction.ASC, "user_id")))
-            var memberList = memberPage.content
+            var nodeMappingPage = nodeMappingPage.getNodeMappingList(key_word, PageRequest.of(page-1, 10, Sort.by(Sort.Direction.DESC, "reg_date")))
+            var nodeMappingList = nodeMappingPage.content
 
             mv.addObject("nowPage", page)
             mv.addObject("key_word", key_word)
-            mv.addObject("totalPages", memberPage.totalPages)
-            mv.addObject("memberList", memberList)
+            mv.addObject("totalPages", nodeMappingPage.totalPages)
+            mv.addObject("nodeMappingList", nodeMappingList)
 
-            mv.viewName = "manageNode"
+            mv.viewName = "patientMapping"
         } else {
             session.removeAttribute("member")
             mv.viewName = "redirect:/loginPage"
         }
         return mv
+    }
+
+    @RequestMapping(value = "addPatientMappingPage", method = [RequestMethod.GET])
+    private fun addPatientMappingPage(session: HttpSession): ModelAndView {
+        var mv = ModelAndView()
+
+        var member: Member? = null
+        if (session.getAttribute("member") !=null){
+            member = session.getAttribute("member") as Member
+        }
+        if (member != null && member.patientMapping == 1) {
+            mv.addObject("member", member)
+            mv.addObject("node_kn", NodeInfoObject.node_kn)
+
+            mv.viewName = "addPatientMapping"
+        } else {
+            session.removeAttribute("member")
+            mv.viewName = "redirect:/loginPage"
+        }
+        return mv
+    }
+
+    @RequestMapping(value = "getPatientInfo", method = [RequestMethod.POST])
+    @ResponseBody
+    private fun getPatientInfo(@RequestParam("patient_no") patient_no: String, session: HttpSession): Map<String, String> {
+        val result: MutableMap<String, String> = mutableMapOf()
+        var member: Member? = null
+        if (session.getAttribute("member") !=null){
+            member = session.getAttribute("member") as Member
+        }
+        if (member != null && member.patientMapping == 1) {
+            try {
+                var patient_data =  testPatientDAO.findById(patient_no)
+                var patient = patient_data.get()
+                result["result"] = "true"
+                result["patient_name"] = patient.patient_name!!
+                result["birthday"] = patient.birthday!!
+            } catch (e: Exception) {
+                result["result"] = e.toString()
+            }
+        } else {
+            session.removeAttribute("member")
+            result["result"] = "false"
+        }
+        return result
+    }
+
+    @RequestMapping(value = "addPatientMappingProcess", method = [RequestMethod.POST])
+    @ResponseBody
+    private fun addPatientMappingProcess(@ModelAttribute nodeMapping: NodeMapping, session: HttpSession): Map<String, String> {
+        val result: MutableMap<String, String> = mutableMapOf()
+        var member: Member? = null
+        if (session.getAttribute("member") !=null){
+            member = session.getAttribute("member") as Member
+        }
+        if (member != null && member.patientMapping == 1) {
+            try {
+                val converters = ArrayList<HttpMessageConverter<*>>()
+                converters.add(FormHttpMessageConverter())
+                converters.add(StringHttpMessageConverter())
+                converters.add(MappingJackson2HttpMessageConverter())
+
+                val restTemplate = RestTemplate()
+                restTemplate.messageConverters = converters
+                val map = LinkedMultiValueMap<String, String>()
+                map.add("node_kn", nodeMapping.node_kn)
+                val checkKN = restTemplate.postForObject("http://220.149.87.125:10000/Authentication/checkKN", map, Boolean::class.java)
+
+                if (!checkKN!!){
+                    nodeMapping.acceptor = member.user_id
+                    nodeMapping.reg_date = Timestamp(System.currentTimeMillis())
+                    var nodeMapping = nodeMappingDAO.save(nodeMapping)
+                    var nodeMappingMessage = NodeMappingMessage(NodeInfoObject.node_kn!!, nodeMapping.patient_no!!, nodeMapping.reg_date!!, NodeInfoObject.node_name)
+                    var messageStack = MessageStack(null, nodeMapping.node_kn!!, ParsingJSON.modelToJson(nodeMappingMessage))
+                    messageStack = messageStackDAO.save(messageStack)
+
+                    map.clear()
+                    map.add("sender", NodeInfoObject.node_kn!!)
+                    map.add("cert_key", NodeInfoObject.cert_key!!)
+                    map.add("message_type", "node_mapping")
+                    map.add("target", nodeMapping.node_kn!!)
+                    map.add("stack_no", messageStack.message_stack_no.toString())
+
+                    var checkSend = restTemplate.postForObject("http://220.149.87.125:10000/MessageQueue/sendToPersonal", map, Boolean::class.java)
+
+                    if (checkSend!!){
+                        result["result"] = "true"
+                    }else{
+                        result["result"] = "Failed to send message to partner node"
+                    }
+                }else{
+                    result["result"] = "Node Kn does not exist."
+                }
+            } catch (e: Exception) {
+                result["result"] = e.toString()
+            }
+        } else {
+            session.removeAttribute("member")
+            result["result"] = "false"
+        }
+        return result
+    }
+
+    @RequestMapping(value = "patientMappingDetailPage", method = [RequestMethod.POST])
+    private fun patientMappingDetailPage(@RequestParam("node_kn") node_kn: String,
+                                     session: HttpSession): ModelAndView {
+        var mv = ModelAndView()
+
+        var member: Member? = null
+        if (session.getAttribute("member") !=null){
+            member = session.getAttribute("member") as Member
+        }
+        if (member != null && member.managenode == 1) {
+            mv.addObject("member", member)
+            mv.addObject("node_kn", NodeInfoObject.node_kn)
+
+            var nodeMapping = nodeMappingDAO.findById(node_kn)
+
+            mv.addObject("nodeMapping", nodeMapping.get())
+
+            var primaryPhysicians = primaryPhysicianDAO.getAllbyNodeKN(node_kn)
+
+            mv.addObject("primaryPhysicians", primaryPhysicians)
+
+            mv.viewName = "patientMappingDetail"
+        } else {
+            session.removeAttribute("member")
+            mv.viewName = "redirect:/loginPage"
+        }
+        return mv
+    }
+
+    @RequestMapping(value = "addPrimaryPhysician", method = [RequestMethod.POST])
+    @ResponseBody
+    private fun addPrimaryPhysician(@RequestParam("node_kn") node_kn: String,
+                                    @RequestParam("primaryPhysician_id") primaryPhysician_id: String,
+                                         session: HttpSession): Map<String, String> {
+        val result: MutableMap<String, String> = mutableMapOf()
+        var member: Member? = null
+        if (session.getAttribute("member") !=null){
+            member = session.getAttribute("member") as Member
+        }
+        if (member != null && member.patientMapping == 1) {
+            try {
+                val converters = ArrayList<HttpMessageConverter<*>>()
+                converters.add(FormHttpMessageConverter())
+                converters.add(StringHttpMessageConverter())
+                converters.add(MappingJackson2HttpMessageConverter())
+
+                val restTemplate = RestTemplate()
+                restTemplate.messageConverters = converters
+                val map = LinkedMultiValueMap<String, String>()
+                map.add("node_kn", node_kn)
+                val checkKN = restTemplate.postForObject("http://220.149.87.125:10000/Authentication/checkKN", map, Boolean::class.java)
+
+                if (!checkKN!!){
+                    var primaryPhysician = PrimaryPhysician(PrimaryPhysicianPK(node_kn, primaryPhysician_id), member.user_id, Timestamp(System.currentTimeMillis()), null)
+                    primaryPhysician = primaryPhysicianDAO.save(primaryPhysician)
+                    var physician = memberDAO.findById(primaryPhysician_id)
+                    var primaryPhysicianMessage = PrimaryPhysicianMessage(NodeInfoObject.node_kn!!, primaryPhysician.pk.primaryPhysician!!, primaryPhysician.reg_date!!, physician.get().user_name)
+                    var messageStack = MessageStack(null, node_kn, ParsingJSON.modelToJson(primaryPhysicianMessage))
+                    messageStack = messageStackDAO.save(messageStack)
+
+                    map.clear()
+                    map.add("sender", NodeInfoObject.node_kn!!)
+                    map.add("cert_key", NodeInfoObject.cert_key!!)
+                    map.add("message_type", "addPrimaryPhysician")
+                    map.add("target", node_kn)
+                    map.add("stack_no", messageStack.message_stack_no.toString())
+
+                    var checkSend = restTemplate.postForObject("http://220.149.87.125:10000/MessageQueue/sendToPersonal", map, Boolean::class.java)
+
+                    if (checkSend!!){
+                        result["result"] = "true"
+                    }else{
+                        result["result"] = "Failed to send message to partner node"
+                    }
+                }else{
+                    result["result"] = "Node Kn does not exist."
+                }
+            } catch (e: Exception) {
+                result["result"] = e.toString()
+            }
+        } else {
+            session.removeAttribute("member")
+            result["result"] = "false"
+        }
+        println(result.toString())
+        return result
     }
 
     //구현중

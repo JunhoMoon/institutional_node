@@ -17,7 +17,6 @@ import java.lang.Exception
 import java.net.InetAddress
 import java.util.*
 
-
 @SpringBootApplication
 class InstitutionalNodeApplication
 
@@ -25,14 +24,15 @@ fun main(args: Array<String>) {
     runApplication<InstitutionalNodeApplication>(*args) {
         setBannerMode(Banner.Mode.OFF)
 
-//기관 사용자 노드 로그인
+        //기관 사용자 노드 로그인
         if (NodeInfoObject.node_kn == null){
             var nodeInfo = NodeInfo(null, null, null, null, null)
 
             var login = false
             println("1 - Login, 2 - Edit PW, 3 - EXIT")
             print("Enter Function NO : ")
-            var funtionNo: String = readLine()!!
+//            var funtionNo: String = readLine()!!
+            var funtionNo: String = "1"
 
             when (funtionNo) {
                 "1" -> {
@@ -49,7 +49,8 @@ fun main(args: Array<String>) {
                     val map = LinkedMultiValueMap<String, String>()
 
                     print("Enter Node UID : ")
-                    nodeInfo.node_uid = readLine()!!
+//                    nodeInfo.node_uid = readLine()!!
+                    nodeInfo.node_uid = "ssumedical@test.com"
 
                     map.add("node_uid", nodeInfo.node_uid)
                     map.add("node_ap_type", "institutional")
@@ -61,7 +62,8 @@ fun main(args: Array<String>) {
                             nodeInfo.node_kn = user_kn
                             println("Hello $user_kn")
                             print("Enter Node PW : ")
-                            nodeInfo.node_pw = readLine()!!
+//                            nodeInfo.node_pw = readLine()!!
+                            nodeInfo.node_pw = "ubizno1!"
 
                             map.clear()
                             map.add("target", "center")
@@ -90,7 +92,8 @@ fun main(args: Array<String>) {
                                             println("And, your ip address is '$local'.")
                                             println("Enter '1' if the address is correct on the server, otherwise enter the new address.")
                                             print("Enter AP : ")
-                                            nodeInfo.node_ap = readLine()!!
+//                                            nodeInfo.node_ap = readLine()!!
+                                            nodeInfo.node_ap = "1"
                                             if (nodeInfo.node_ap.equals("1")) {
                                                 NodeInfoObject.node_kn = nodeInfo.node_kn!!
                                                 login = true
@@ -152,7 +155,6 @@ fun main(args: Array<String>) {
                     System.exit(0)
                 }
             }
-            println(login)
             if (!login) {
                 System.exit(0)
             }
