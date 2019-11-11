@@ -2,9 +2,7 @@ package com.hims.institutional_node.controller
 
 import com.google.gson.JsonObject
 import com.hims.institutional_node.*
-import com.hims.institutional_node.Model.Communication_Key
-import com.hims.institutional_node.Model.Message
-import com.hims.institutional_node.Model.PrimaryPhysicianPK
+import com.hims.institutional_node.Model.*
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.converter.FormHttpMessageConverter
 import org.springframework.http.converter.HttpMessageConverter
@@ -36,6 +34,8 @@ internal class MessagingController {
     internal lateinit var healthDataDao:HealthDAO
     @Autowired
     internal lateinit var healthDataDetailDAO: HealthDetailDAO
+    @Autowired
+    internal lateinit var notaryDataDAO: NotaryDataDAO
     @Autowired
     internal lateinit var testPatientDAO: TestPatientDAO
 
@@ -183,7 +183,7 @@ internal class MessagingController {
     }
 
     @PostMapping("acceptHealth")
-    fun acceptHealth(@RequestParam("node_kn") node_kn: String, @RequestParam("cert_key") cert_key: String, @RequestParam("issuer_health_no") issuer_health_no: Long, @RequestParam("subject_health_no") subject_health_no: Long) {
+    fun acceptHealth(@RequestParam("node_kn") node_kn: String, @RequestParam("cert_key") cert_key: String, @RequestParam("issuer_health_no") issuer_health_no: Long, @RequestParam("subject_health_no") subject_health_no: Long, @RequestParam("healthNotarys") healthNotarys: Long) {
         try {
             val converters = ArrayList<HttpMessageConverter<*>>()
             converters.add(FormHttpMessageConverter())
@@ -203,6 +203,8 @@ internal class MessagingController {
                 var healthData = health.get()
                 healthData.subject_health_no = subject_health_no
                 healthDataDao.save(healthData)
+//                var healthNotarys: MutableList<HealthNotary> = mutableListOf()
+                println(healthNotarys)
             }
         }catch (e:Exception){
             println(e.toString())
@@ -234,5 +236,32 @@ internal class MessagingController {
         }catch (e:Exception){
             println(e.toString())
         }
+    }
+
+    @PostMapping("addNotary")
+    fun addNotary(@RequestParam("node_kn") node_kn: String, @RequestParam("cert_key") cert_key: String, @RequestParam("sha") sha: String):NotaryData? {
+        var notaryData: NotaryData? = null
+        try {
+            val converters = ArrayList<HttpMessageConverter<*>>()
+            converters.add(FormHttpMessageConverter())
+            converters.add(StringHttpMessageConverter())
+            converters.add(MappingJackson2HttpMessageConverter())
+
+            val restTemplate = RestTemplate()
+            restTemplate.messageConverters = converters
+            val map = LinkedMultiValueMap<String, String>()
+            map.add("node_kn", node_kn)
+            map.add("cert_key", cert_key)
+
+            var checkCert = restTemplate.postForObject("http://220.149.87.125:10000/Authentication/CheckCertKey", map, Boolean::class.java)
+
+            if (checkCert!!){
+                notaryData = NotaryData(null, sha, Timestamp(Date().time))
+                notaryData = notaryDataDAO.save(notaryData)
+            }
+        }catch (e:Exception){
+            println(e.toString())
+        }
+        return notaryData
     }
 }
