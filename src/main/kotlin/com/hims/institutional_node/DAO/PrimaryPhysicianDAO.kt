@@ -13,6 +13,7 @@ import org.springframework.data.repository.PagingAndSortingRepository
 import org.springframework.data.repository.query.Param
 import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
+import java.sql.Timestamp
 
 @Repository
 internal interface PrimaryPhysicianDAO : CrudRepository<PrimaryPhysician, PrimaryPhysicianPK> {
@@ -23,8 +24,8 @@ internal interface PrimaryPhysicianDAO : CrudRepository<PrimaryPhysician, Primar
 //    @Query(nativeQuery = true, value = "select count(*) from member where user_id like :user_id")
 //    fun checkUserID(@Param("user_id") user_id: String): Int
 //
-//    @Query(nativeQuery = true, value = "update MEMBER set TYPE = :#{#member.type}, STATICIP = :#{#member.staticIp}, LEGACYID = :#{#member.legacyid}, DESCRIPTION = :#{#member.description}, H_DATARECORD = :#{#member.h_datarecord}, H_DATAVIEW = :#{#member.h_dataview}, A_PAYMENT = :#{#member.a_payment}, A_WITHDRAW = :#{#member.a_withdraw}, A_HISTORY = :#{#member.a_history}, PATIENTMAPPING = :#{#member.patientMapping}, H_SEARCH = :#{#member.h_search}, MANAGENODE = :#{#member.managenode} where USER_ID like :#{#member.user_id}")
-//    @Modifying
-//    @Transactional
-//    fun manageMember(@Param("member") member: Member)
+@Query(nativeQuery = true, value = "update PRIMARY_PHYSICIAN set ACCEPTED = :accepted where node_kn like :node_kn and PRIMARY_PHYSICIAN like :primaryPhysician_id")
+@Modifying
+@Transactional
+fun updateByID(@Param("node_kn") node_kn: String, @Param("primaryPhysician_id") primaryPhysician_id: String, @Param("accepted") accepted: Timestamp)
 }

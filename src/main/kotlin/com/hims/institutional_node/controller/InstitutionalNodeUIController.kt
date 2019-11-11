@@ -1,5 +1,8 @@
 package com.hims.institutional_node
 
+import com.google.gson.JsonObject
+import com.google.gson.JsonParser
+import com.google.gson.reflect.TypeToken
 import com.hims.Central_Server.message.ParsingJSON
 import com.hims.institutional_node.Model.*
 import org.springframework.beans.factory.annotation.Autowired
@@ -16,8 +19,7 @@ import org.springframework.web.bind.annotation.*
 import org.springframework.web.client.RestTemplate
 import org.springframework.web.servlet.ModelAndView
 import java.sql.Timestamp
-import java.util.ArrayList
-import javax.annotation.Resource
+import java.util.*
 import javax.servlet.http.HttpSession
 
 @Controller
@@ -36,6 +38,10 @@ class InstitutionalNodeUIController {
     internal lateinit var primaryPhysicianDAO: PrimaryPhysicianDAO
     @Autowired
     internal lateinit var messageStackDAO: MessageStackDAO
+    @Autowired
+    internal lateinit var healthDAO: HealthDAO
+    @Autowired
+    internal lateinit var healthDetailDAO: HealthDetailDAO
     @Autowired
     internal lateinit var testPatientDAO: TestPatientDAO
 
@@ -200,9 +206,7 @@ class InstitutionalNodeUIController {
 
     //구현중
     @RequestMapping(value = "healthRecordPage", method = [RequestMethod.POST])
-    private fun healthRecordPage(@RequestParam("page", required = false, defaultValue = "1") page: Int,
-                               @RequestParam("key_word", required = false, defaultValue = "") key_word: String,
-                               session: HttpSession): ModelAndView {
+    private fun healthRecordPage(session: HttpSession): ModelAndView {
         var mv = ModelAndView()
 
         var member: Member? = null
@@ -213,20 +217,102 @@ class InstitutionalNodeUIController {
             mv.addObject("member", member)
             mv.addObject("node_kn", NodeInfoObject.node_kn)
 
-            var memberPage = memberPage.getMemberList(key_word, PageRequest.of(page-1, 10, Sort.by(Sort.Direction.ASC, "user_id")))
-            var memberList = memberPage.content
-
-            mv.addObject("nowPage", page)
-            mv.addObject("key_word", key_word)
-            mv.addObject("totalPages", memberPage.totalPages)
-            mv.addObject("memberList", memberList)
-
-            mv.viewName = "manageNode"
+            mv.viewName = "recordHealthData"
         } else {
             session.removeAttribute("member")
             mv.viewName = "redirect:/loginPage"
         }
         return mv
+    }
+
+    @RequestMapping(value = "addHealthData", method = [RequestMethod.POST])
+    @ResponseBody
+    private fun addHealthData(@RequestParam("patient_no") patient_no: String, @RequestParam("details") details: String, session: HttpSession): Map<String, String> {
+        val result: MutableMap<String, String> = mutableMapOf()
+        var member: Member? = null
+        if (session.getAttribute("member") !=null){
+            member = session.getAttribute("member") as Member
+        }
+        if (member != null && member.patientMapping == 1) {
+            try {
+                var health: Health = Health(null, null, patient_no, member.user_id, Timestamp(Date().time))
+
+                health = healthDAO.save(health)
+
+                var healthDetails:List<HealthDetail>?
+
+                val groupListType = object : TypeToken<List<HealthDetail>>(){}.type
+                healthDetails = ParsingJSON.gson.fromJson(details, groupListType)
+
+                for(detail in healthDetails!!){
+                    detail.healthDetailPK.health_no = health.issuer_health_no
+                }
+
+                healthDetailDAO.saveAll(healthDetails)
+
+                val converters = ArrayList<HttpMessageConverter<*>>()
+                converters.add(FormHttpMessageConverter())
+                converters.add(StringHttpMessageConverter())
+                converters.add(MappingJackson2HttpMessageConverter())
+
+                val restTemplate = RestTemplate()
+                restTemplate.messageConverters = converters
+                val map = LinkedMultiValueMap<String, String>()
+                map.add("node_kn",NodeInfoObject.node_kn)
+                map.add("cert_key",NodeInfoObject.cert_key)
+                map.add("last_health_no", health.issuer_health_no.toString())
+                restTemplate.postForObject("http://220.149.87.125:10000/Authentication/UpdateLastHealthNo", map, Boolean::class.java)
+
+                var node_kn = nodeMappingDAO.findByPatientNo(patient_no)
+                if (node_kn != null){
+                    map.clear()
+                    map.add("node_kn",node_kn)
+                    val checkKN = restTemplate.postForObject("http://220.149.87.125:10000/Authentication/checkKN", map, Boolean::class.java)
+
+                    if (!checkKN!!){
+                        var healthMessage = ParsingJSON.modelToJson(health)
+                        var healthDetailMessage = ParsingJSON.modelToJson(healthDetails)
+
+                        var jsonObj = JsonObject()
+
+                        jsonObj.add("health", JsonParser().parse(healthMessage))
+                        jsonObj.add("healthDetail", JsonParser().parse(healthDetailMessage))
+
+
+                        var message:String = jsonObj.toString()
+                        message.replace("\"", "")
+
+                        var messageStack = MessageStack(null, node_kn, ParsingJSON.modelToJson(jsonObj))
+                        messageStack = messageStackDAO.save(messageStack)
+
+                        map.clear()
+                        map.add("sender", NodeInfoObject.node_kn!!)
+                        map.add("cert_key", NodeInfoObject.cert_key!!)
+                        map.add("message_type", "recordHealthData")
+                        map.add("target", node_kn)
+                        map.add("stack_no", messageStack.message_stack_no.toString())
+
+                        var checkSend = restTemplate.postForObject("http://220.149.87.125:10000/MessageQueue/sendToPersonal", map, Boolean::class.java)
+
+                        if (checkSend!!){
+                            result["result"] = "true"
+                        }else{
+                            result["result"] = "Failed to send message to partner node"
+                        }
+                    }else{
+                        result["result"] = "Node Kn does not exist."
+                    }
+                }else{
+                    result["result"] = "true"
+                }
+            } catch (e: Exception) {
+                result["result"] = e.toString()
+            }
+        } else {
+            session.removeAttribute("member")
+            result["result"] = "false"
+        }
+        return result
     }
 
     //구현중
@@ -359,7 +445,7 @@ class InstitutionalNodeUIController {
 
                 if (!checkKN!!){
                     nodeMapping.acceptor = member.user_id
-                    nodeMapping.reg_date = Timestamp(System.currentTimeMillis())
+                    nodeMapping.reg_date = Timestamp(Date().time)
                     var nodeMapping = nodeMappingDAO.save(nodeMapping)
                     var nodeMappingMessage = NodeMappingMessage(NodeInfoObject.node_kn!!, nodeMapping.patient_no!!, nodeMapping.reg_date!!, NodeInfoObject.node_name)
                     var messageStack = MessageStack(null, nodeMapping.node_kn!!, ParsingJSON.modelToJson(nodeMappingMessage))
@@ -445,7 +531,7 @@ class InstitutionalNodeUIController {
                 val checkKN = restTemplate.postForObject("http://220.149.87.125:10000/Authentication/checkKN", map, Boolean::class.java)
 
                 if (!checkKN!!){
-                    var primaryPhysician = PrimaryPhysician(PrimaryPhysicianPK(node_kn, primaryPhysician_id), member.user_id, Timestamp(System.currentTimeMillis()), null)
+                    var primaryPhysician = PrimaryPhysician(PrimaryPhysicianPK(node_kn, primaryPhysician_id), member.user_id, Timestamp(Date().time), null)
                     primaryPhysician = primaryPhysicianDAO.save(primaryPhysician)
                     var physician = memberDAO.findById(primaryPhysician_id)
                     var primaryPhysicianMessage = PrimaryPhysicianMessage(NodeInfoObject.node_kn!!, primaryPhysician.pk.primaryPhysician!!, primaryPhysician.reg_date!!, physician.get().user_name)

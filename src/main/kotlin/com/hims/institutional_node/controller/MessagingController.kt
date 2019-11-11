@@ -4,6 +4,7 @@ import com.google.gson.JsonObject
 import com.hims.institutional_node.*
 import com.hims.institutional_node.Model.Communication_Key
 import com.hims.institutional_node.Model.Message
+import com.hims.institutional_node.Model.PrimaryPhysicianPK
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.converter.FormHttpMessageConverter
 import org.springframework.http.converter.HttpMessageConverter
@@ -12,7 +13,8 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
 import org.springframework.util.LinkedMultiValueMap
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.client.RestTemplate
-import java.util.ArrayList
+import java.sql.Timestamp
+import java.util.*
 
 
 @RestController
@@ -28,6 +30,12 @@ internal class MessagingController {
     internal lateinit var nodeMappingPage: NodeMappingPage
     @Autowired
     internal lateinit var messageStackDAO: MessageStackDAO
+    @Autowired
+    internal lateinit var primaryPhysicianDAO: PrimaryPhysicianDAO
+    @Autowired
+    internal lateinit var healthDataDao:HealthDAO
+    @Autowired
+    internal lateinit var healthDataDetailDAO: HealthDetailDAO
     @Autowired
     internal lateinit var testPatientDAO: TestPatientDAO
 
@@ -73,5 +81,158 @@ internal class MessagingController {
             println(e.toString())
         }
         return message
+    }
+
+    @PostMapping("acceptNodeMapping")
+    fun acceptNodeMapping(@RequestParam("node_kn") node_kn: String, @RequestParam("cert_key") cert_key: String) {
+        try {
+            val converters = ArrayList<HttpMessageConverter<*>>()
+            converters.add(FormHttpMessageConverter())
+            converters.add(StringHttpMessageConverter())
+            converters.add(MappingJackson2HttpMessageConverter())
+
+            val restTemplate = RestTemplate()
+            restTemplate.messageConverters = converters
+            val map = LinkedMultiValueMap<String, String>()
+            map.add("node_kn", node_kn)
+            map.add("cert_key", cert_key)
+
+            var checkCert = restTemplate.postForObject("http://220.149.87.125:10000/Authentication/CheckCertKey", map, Boolean::class.java)
+
+            if (checkCert!!){
+                var now = Timestamp(Date().time)
+                nodeMappingDAO.updateByNodeKn(node_kn, now)
+            }
+        }catch (e:Exception){
+            println(e.toString())
+        }
+    }
+
+    @PostMapping("rejectNodeMapping")
+    fun rejectNodeMapping(@RequestParam("node_kn") node_kn: String, @RequestParam("cert_key") cert_key: String) {
+        try {
+            val converters = ArrayList<HttpMessageConverter<*>>()
+            converters.add(FormHttpMessageConverter())
+            converters.add(StringHttpMessageConverter())
+            converters.add(MappingJackson2HttpMessageConverter())
+
+            val restTemplate = RestTemplate()
+            restTemplate.messageConverters = converters
+            val map = LinkedMultiValueMap<String, String>()
+            map.add("node_kn", node_kn)
+            map.add("cert_key", cert_key)
+
+            var checkCert = restTemplate.postForObject("http://220.149.87.125:10000/Authentication/CheckCertKey", map, Boolean::class.java)
+
+            if (checkCert!!){
+                nodeMappingDAO.deleteById(node_kn)
+            }
+        }catch (e:Exception){
+            println(e.toString())
+        }
+    }
+
+    @PostMapping("acceptPrimaryPhysician")
+    fun acceptPrimaryPhysician(@RequestParam("node_kn") node_kn: String, @RequestParam("cert_key") cert_key: String, @RequestParam("primaryPhysician_id") primaryPhysician_id: String) {
+        try {
+            val converters = ArrayList<HttpMessageConverter<*>>()
+            converters.add(FormHttpMessageConverter())
+            converters.add(StringHttpMessageConverter())
+            converters.add(MappingJackson2HttpMessageConverter())
+
+            val restTemplate = RestTemplate()
+            restTemplate.messageConverters = converters
+            val map = LinkedMultiValueMap<String, String>()
+            map.add("node_kn", node_kn)
+            map.add("cert_key", cert_key)
+
+            var checkCert = restTemplate.postForObject("http://220.149.87.125:10000/Authentication/CheckCertKey", map, Boolean::class.java)
+
+            if (checkCert!!){
+                var now = Timestamp(Date().time)
+                primaryPhysicianDAO.updateByID(node_kn, primaryPhysician_id, now)
+            }
+        }catch (e:Exception){
+            println(e.toString())
+        }
+    }
+
+    @PostMapping("rejectPrimaryPhysician")
+    fun rejectNodeMapping(@RequestParam("node_kn") node_kn: String, @RequestParam("cert_key") cert_key: String, @RequestParam("primaryPhysician_id") primaryPhysician_id: String) {
+        try {
+            val converters = ArrayList<HttpMessageConverter<*>>()
+            converters.add(FormHttpMessageConverter())
+            converters.add(StringHttpMessageConverter())
+            converters.add(MappingJackson2HttpMessageConverter())
+
+            val restTemplate = RestTemplate()
+            restTemplate.messageConverters = converters
+            val map = LinkedMultiValueMap<String, String>()
+            map.add("node_kn", node_kn)
+            map.add("cert_key", cert_key)
+
+            var checkCert = restTemplate.postForObject("http://220.149.87.125:10000/Authentication/CheckCertKey", map, Boolean::class.java)
+
+            if (checkCert!!){
+                var primaryPhysicianPK = PrimaryPhysicianPK(node_kn, primaryPhysician_id)
+                primaryPhysicianDAO.deleteById(primaryPhysicianPK)
+            }
+        }catch (e:Exception){
+            println(e.toString())
+        }
+    }
+
+    @PostMapping("acceptHealth")
+    fun acceptHealth(@RequestParam("node_kn") node_kn: String, @RequestParam("cert_key") cert_key: String, @RequestParam("issuer_health_no") issuer_health_no: Long, @RequestParam("subject_health_no") subject_health_no: Long) {
+        try {
+            val converters = ArrayList<HttpMessageConverter<*>>()
+            converters.add(FormHttpMessageConverter())
+            converters.add(StringHttpMessageConverter())
+            converters.add(MappingJackson2HttpMessageConverter())
+
+            val restTemplate = RestTemplate()
+            restTemplate.messageConverters = converters
+            val map = LinkedMultiValueMap<String, String>()
+            map.add("node_kn", node_kn)
+            map.add("cert_key", cert_key)
+
+            var checkCert = restTemplate.postForObject("http://220.149.87.125:10000/Authentication/CheckCertKey", map, Boolean::class.java)
+
+            if (checkCert!!){
+                var health =  healthDataDao.findById(issuer_health_no)
+                var healthData = health.get()
+                healthData.subject_health_no = subject_health_no
+                healthDataDao.save(healthData)
+            }
+        }catch (e:Exception){
+            println(e.toString())
+        }
+    }
+
+    @PostMapping("rejectHealth")
+    fun rejectHealth(@RequestParam("node_kn") node_kn: String, @RequestParam("cert_key") cert_key: String, @RequestParam("issuer_health_no") issuer_health_no: Long) {
+        try {
+            val converters = ArrayList<HttpMessageConverter<*>>()
+            converters.add(FormHttpMessageConverter())
+            converters.add(StringHttpMessageConverter())
+            converters.add(MappingJackson2HttpMessageConverter())
+
+            val restTemplate = RestTemplate()
+            restTemplate.messageConverters = converters
+            val map = LinkedMultiValueMap<String, String>()
+            map.add("node_kn", node_kn)
+            map.add("cert_key", cert_key)
+
+            var checkCert = restTemplate.postForObject("http://220.149.87.125:10000/Authentication/CheckCertKey", map, Boolean::class.java)
+
+            if (checkCert!!){
+                var health =  healthDataDao.findById(issuer_health_no)
+                var healthData = health.get()
+                healthData.subject_health_no = 0
+                healthDataDao.save(healthData)
+            }
+        }catch (e:Exception){
+            println(e.toString())
+        }
     }
 }

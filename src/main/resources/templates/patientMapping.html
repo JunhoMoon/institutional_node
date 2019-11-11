@@ -119,12 +119,17 @@
             </thead>
             <tbody>
             <th:block th:each="nodeMapping : ${nodeMappingList}">
-                <tr th:data-id="${nodeMapping.node_kn}" onclick="goDetail(this.getAttribute('data-id'))" style="cursor: pointer">
+                <tr th:if="${nodeMapping.accepted} != null" th:data-id="${nodeMapping.node_kn}" onclick="goDetail(this.getAttribute('data-id'))" style="cursor: pointer">
                     <td th:text="${nodeMapping.patient_no}"></td>
                     <td th:text="${nodeMapping.node_kn}"></td>
                     <td th:text="${nodeMapping.reg_date}"></td>
-                    <td th:if="${nodeMapping.accepted} != null" th:text="${nodeMapping.accepted}"></td>
-                    <td th:unless="${nodeMapping.accepted} != null">false</td>
+                    <td th:text="${nodeMapping.accepted}"></td>
+                </tr>
+                <tr th:unless="${nodeMapping.accepted} != null" style="cursor: pointer">
+                    <td th:text="${nodeMapping.patient_no}"></td>
+                    <td th:text="${nodeMapping.node_kn}"></td>
+                    <td th:text="${nodeMapping.reg_date}"></td>
+                    <td>false</td>
                 </tr>
             </th:block>
             </tbody>
