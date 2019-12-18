@@ -5,6 +5,7 @@ import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
 import com.hims.Central_Server.message.ParsingJSON
 import com.hims.institutional_node.Model.*
+import okhttp3.RequestBody
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration
 import org.springframework.data.domain.PageRequest
@@ -17,7 +18,12 @@ import org.springframework.stereotype.Controller
 import org.springframework.util.LinkedMultiValueMap
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.client.RestTemplate
+import org.springframework.web.multipart.MultipartFile
+import org.springframework.web.multipart.MultipartHttpServletRequest
 import org.springframework.web.servlet.ModelAndView
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder
+import java.io.File
+import java.io.FileOutputStream
 import java.sql.Timestamp
 import java.util.*
 import javax.servlet.http.HttpSession
@@ -31,6 +37,8 @@ class InstitutionalNodeUIController {
     @Autowired
     internal lateinit var memberPage: MemberPage
     @Autowired
+    internal lateinit var healthViewPage: HealthViewPage
+    @Autowired
     internal lateinit var nodeMappingDAO: NodeMappingDAO
     @Autowired
     internal lateinit var nodeMappingPage: NodeMappingPage
@@ -43,7 +51,11 @@ class InstitutionalNodeUIController {
     @Autowired
     internal lateinit var healthDetailDAO: HealthDetailDAO
     @Autowired
+    internal lateinit var healthViewDAO: HealthViewDAO
+    @Autowired
     internal lateinit var testPatientDAO: TestPatientDAO
+
+    internal var fileManager: FileManager = FileManager()
 
     @RequestMapping(value = "loginPage", method = [RequestMethod.GET])
     private fun loginPage(session: HttpSession): ModelAndView {
@@ -227,14 +239,18 @@ class InstitutionalNodeUIController {
 
     @RequestMapping(value = "addHealthData", method = [RequestMethod.POST])
     @ResponseBody
-    private fun addHealthData(@RequestParam("patient_no") patient_no: String, @RequestParam("details") details: String, session: HttpSession): Map<String, String> {
+//    private fun addHealthData(@RequestParam("patient_no") patient_no: String, @RequestParam("details") details: String, @RequestParam("files") files: MultipartHttpServletRequest?, session: HttpSession): Map<String, String> {
+    private fun addHealthData(formData: MultipartHttpServletRequest?, session: HttpSession): Map<String, String> {
         val result: MutableMap<String, String> = mutableMapOf()
         var member: Member? = null
+
         if (session.getAttribute("member") !=null){
             member = session.getAttribute("member") as Member
         }
-        if (member != null && member.patientMapping == 1) {
+        if (member != null && member.h_datarecord == 1) {
             try {
+                var patient_no:String = formData?.getParameter("patient_no")!!
+                var details:String = formData?.getParameter("details")
                 var health: Health = Health(null, null, patient_no, member.user_id, Timestamp(Date().time))
 
                 health = healthDAO.save(health)
@@ -244,66 +260,96 @@ class InstitutionalNodeUIController {
                 val groupListType = object : TypeToken<List<HealthDetail>>(){}.type
                 healthDetails = ParsingJSON.gson.fromJson(details, groupListType)
 
-                for(detail in healthDetails!!){
-                    detail.healthDetailPK.health_no = health.issuer_health_no
-                }
+                try {
 
-                healthDetailDAO.saveAll(healthDetails)
+                    val fileMap = mutableMapOf<String, String>()
+                    for(detail in healthDetails!!){
+                        detail.healthDetailPK.health_no = health.issuer_health_no
+                        if (detail.data_type.equals("File")){
+                            var detailFiles:MutableList<MultipartFile>? = formData?.getFiles(detail.healthDetailPK.health_detail_no.toString())
+                            var fileNames = ""
+                            for ((i, file) in detailFiles!!.withIndex()){
 
-                val converters = ArrayList<HttpMessageConverter<*>>()
-                converters.add(FormHttpMessageConverter())
-                converters.add(StringHttpMessageConverter())
-                converters.add(MappingJackson2HttpMessageConverter())
+//                                println(formData.session.servletContext.getRealPath("/"))
 
-                val restTemplate = RestTemplate()
-                restTemplate.messageConverters = converters
-                val map = LinkedMultiValueMap<String, String>()
-                map.add("node_kn",NodeInfoObject.node_kn)
-                map.add("cert_key",NodeInfoObject.cert_key)
-                map.add("last_health_no", health.issuer_health_no.toString())
-                restTemplate.postForObject("http://220.149.87.125:10000/Authentication/UpdateLastHealthNo", map, Boolean::class.java)
+                                var fileName = fileManager.saveFile(file)
+                                fileNames += fileName
+                                if ((i+1) != (detailFiles!!.size)){
+                                    fileNames += "|"
+                                }
 
-                var node_kn = nodeMappingDAO.findByPatientNo(patient_no)
-                if (node_kn != null){
-                    map.clear()
-                    map.add("node_kn",node_kn)
-                    val checkKN = restTemplate.postForObject("http://220.149.87.125:10000/Authentication/checkKN", map, Boolean::class.java)
+                                var fileString = fileManager.fileToByte(fileName)
 
-                    if (!checkKN!!){
-                        var healthMessage = ParsingJSON.modelToJson(health)
-                        var healthDetailMessage = ParsingJSON.modelToJson(healthDetails)
+                                fileMap.put(fileName, fileString)
+                            }
+                            detail.data_text_value = fileNames
+                        }
+                    }
 
-                        var jsonObj = JsonObject()
+                    healthDetailDAO.saveAll(healthDetails)
 
-                        jsonObj.add("health", JsonParser().parse(healthMessage))
-                        jsonObj.add("healthDetail", JsonParser().parse(healthDetailMessage))
+                    val converters = ArrayList<HttpMessageConverter<*>>()
+                    converters.add(FormHttpMessageConverter())
+                    converters.add(StringHttpMessageConverter())
+                    converters.add(MappingJackson2HttpMessageConverter())
 
+                    val restTemplate = RestTemplate()
+                    restTemplate.messageConverters = converters
+                    val map = LinkedMultiValueMap<String, String>()
+                    map.add("node_kn",NodeInfoObject.node_kn)
+                    map.add("cert_key",NodeInfoObject.cert_key)
+                    map.add("last_health_no", health.issuer_health_no.toString())
+                    restTemplate.postForObject("http://220.149.87.125:10000/Authentication/UpdateLastHealthNo", map, Boolean::class.java)
 
-                        var message:String = jsonObj.toString()
-                        message.replace("\"", "")
-
-                        var messageStack = MessageStack(null, node_kn, ParsingJSON.modelToJson(jsonObj))
-                        messageStack = messageStackDAO.save(messageStack)
-
+                    var node_kn = nodeMappingDAO.findByPatientNo(patient_no!!)
+                    if (node_kn != null){
                         map.clear()
-                        map.add("sender", NodeInfoObject.node_kn!!)
-                        map.add("cert_key", NodeInfoObject.cert_key!!)
-                        map.add("message_type", "recordHealthData")
-                        map.add("target", node_kn)
-                        map.add("stack_no", messageStack.message_stack_no.toString())
+                        map.add("node_kn",node_kn)
+                        val checkKN = restTemplate.postForObject("http://220.149.87.125:10000/Authentication/checkKN", map, Boolean::class.java)
 
-                        var checkSend = restTemplate.postForObject("http://220.149.87.125:10000/MessageQueue/sendToPersonal", map, Boolean::class.java)
+                        if (!checkKN!!){
+                            var healthMessage = ParsingJSON.modelToJson(health)
+                            var healthDetailMessage = ParsingJSON.modelToJson(healthDetails)
+                            var healthFileMessage = ParsingJSON.modelToJson(fileMap)
 
-                        if (checkSend!!){
-                            result["result"] = "true"
+                            println(healthFileMessage)
+
+                            var jsonObj = JsonObject()
+
+                            jsonObj.add("health", JsonParser().parse(healthMessage))
+                            jsonObj.add("healthDetail", JsonParser().parse(healthDetailMessage))
+                            jsonObj.add("healthFile", JsonParser().parse(healthFileMessage))
+
+
+                            var message:String = jsonObj.toString()
+                            message.replace("\"", "")
+
+                            var messageStack = MessageStack(null, node_kn, ParsingJSON.modelToJson(jsonObj))
+                            messageStack = messageStackDAO.save(messageStack)
+
+                            map.clear()
+                            map.add("sender", NodeInfoObject.node_kn!!)
+                            map.add("cert_key", NodeInfoObject.cert_key!!)
+                            map.add("message_type", "recordHealthData")
+                            map.add("target", node_kn)
+                            map.add("stack_no", messageStack.message_stack_no.toString())
+
+                            var checkSend = restTemplate.postForObject("http://220.149.87.125:10000/MessageQueue/sendToPersonal", map, Boolean::class.java)
+
+                            if (checkSend!!){
+                                result["result"] = "true"
+                            }else{
+                                result["result"] = "Failed to send message to partner node"
+                            }
                         }else{
-                            result["result"] = "Failed to send message to partner node"
+                            result["result"] = "Node Kn does not exist."
                         }
                     }else{
                         result["result"] = "Node Kn does not exist."
                     }
-                }else{
-                    result["result"] = "true"
+                }catch (e:Exception){
+                    healthDAO.delete(health)
+                    result["result"] = e.toString()
                 }
             } catch (e: Exception) {
                 result["result"] = e.toString()
@@ -330,15 +376,97 @@ class InstitutionalNodeUIController {
             mv.addObject("member", member)
             mv.addObject("node_kn", NodeInfoObject.node_kn)
 
-            var memberPage = memberPage.getMemberList(key_word, PageRequest.of(page-1, 10, Sort.by(Sort.Direction.ASC, "user_id")))
-            var memberList = memberPage.content
+            var healthViewPage = healthViewPage.getHealthViewList(key_word, PageRequest.of(page-1, 10, Sort.by(Sort.Direction.ASC, "patient_no")))
+            var HealthViews = healthViewPage.content
 
             mv.addObject("nowPage", page)
             mv.addObject("key_word", key_word)
-            mv.addObject("totalPages", memberPage.totalPages)
-            mv.addObject("memberList", memberList)
+            mv.addObject("totalPages", healthViewPage.totalPages)
+            mv.addObject("HealthViews", HealthViews)
 
-            mv.viewName = "manageNode"
+            mv.viewName = "HealthView"
+        } else {
+            session.removeAttribute("member")
+            mv.viewName = "redirect:/loginPage"
+        }
+        return mv
+    }
+
+    @RequestMapping(value = "addHealthView", method = [RequestMethod.POST])
+    @ResponseBody
+    private fun addHealthView(@RequestParam("add_Patient_no") add_Patient_no: String,
+                                    session: HttpSession): Map<String, String> {
+        val result: MutableMap<String, String> = mutableMapOf()
+        var member: Member? = null
+        if (session.getAttribute("member") !=null){
+            member = session.getAttribute("member") as Member
+        }
+        if (member != null && member.h_dataview == 1) {
+            try {
+                val converters = ArrayList<HttpMessageConverter<*>>()
+                converters.add(FormHttpMessageConverter())
+                converters.add(StringHttpMessageConverter())
+                converters.add(MappingJackson2HttpMessageConverter())
+
+                val restTemplate = RestTemplate()
+                restTemplate.messageConverters = converters
+                val map = LinkedMultiValueMap<String, String>()
+
+                var node_kn = nodeMappingDAO.findByPatientNo(add_Patient_no)
+
+                map.add("node_kn", node_kn)
+                val checkKN = restTemplate.postForObject("http://220.149.87.125:10000/Authentication/checkKN", map, Boolean::class.java)
+
+                if (!checkKN!!){
+                    var vealthView = HealthView(null, member.user_id, add_Patient_no, Timestamp(Date().time), null, null)
+                    vealthView = healthViewDAO.save(vealthView)
+
+                    map.clear()
+                    map.add("sender", NodeInfoObject.node_kn!!)
+                    map.add("cert_key", NodeInfoObject.cert_key!!)
+                    map.add("message_type", "requestHealthView")
+                    map.add("target", node_kn)
+                    map.add("stack_no", vealthView.health_view_no.toString())
+
+                    var checkSend = restTemplate.postForObject("http://220.149.87.125:10000/MessageQueue/sendToPersonal", map, Boolean::class.java)
+
+                    if (checkSend!!){
+                        result["result"] = "true"
+                    }else{
+                        result["result"] = "Failed to send message to partner node"
+                    }
+                }else{
+                    result["result"] = "Node Kn does not exist."
+                }
+            } catch (e: Exception) {
+                result["result"] = e.toString()
+            }
+        } else {
+            session.removeAttribute("member")
+            result["result"] = "false"
+        }
+        println(result.toString())
+        return result
+    }
+
+    @RequestMapping(value = "healthViewDetailPage", method = [RequestMethod.POST])
+    private fun healthViewDetailPage(@RequestParam("health_view_no", required = true) health_view_no: Long,
+                               session: HttpSession): ModelAndView {
+        var mv = ModelAndView()
+
+        var member: Member? = null
+        if (session.getAttribute("member") !=null){
+            member = session.getAttribute("member") as Member
+        }
+        if (member != null && member.h_dataview == 1) {
+            mv.addObject("member", member)
+            mv.addObject("node_kn", NodeInfoObject.node_kn)
+
+            var healthViewMessage = healthViewDAO.findById(health_view_no)
+
+            mv.addObject("healthViewMessage", healthViewMessage.get())
+
+            mv.viewName = "HealthViewDetail"
         } else {
             session.removeAttribute("member")
             mv.viewName = "redirect:/loginPage"

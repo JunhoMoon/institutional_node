@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link rel="stylesheet" th:href="@{/css/main_layout.css}">
+    <link rel="stylesheet" th:href="@{/css/bootstrap.css}">
+
+    <link href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css" rel="stylesheet" id="bootstrap-css">
+    <script src="//netdna.bootstrapcdn.com/bootstrap/3.0.0/js/bootstrap.min.js"></script>
+    <script src="//code.jquery.com/jquery-1.11.1.min.js"></script>
+
+    <script type="text/javascript">
+    </script>
+    <!------ Include the above in your HEAD tag ---------->
+</head>
+<form action="./healthViewDetailPage" id="healthViewDetailPage" method="post">
+    <input type="hidden" name="health_view_no" id="health_view_no">
+</form>
+<input type="checkbox" name="mobile-nav" id="mobile-nav" class="burger-check" onchange="this.blur()">
+<label for="mobile-nav" class="burger white" tabindex="0"><span></span></label>
+<nav role="navigation" class="header-nav">
+    <div class="fixed-nav">
+        <div class="menu">
+            <ul>
+                <th:block th:if="${member.managenode} == 1">
+                    <li class="page_item page-item-2">
+                        <a href="./manageNodePage" class="waves-effect">
+                            Manage Member
+                        </a>
+                    </li>
+                </th:block>
+                <th:block th:if="${member.h_datarecord} == 1">
+                    <li class="page_item page-item-2">
+                        <a href="./healthRecordPage" class="waves-effect">
+                            Health Data Record
+                        </a>
+                    </li>
+                </th:block>
+                <th:block th:if="${member.h_dataview} == 1">
+                    <li class="page_item page-item-2">
+                        <a href="./healthViewPage" class="waves-effect">
+                            Health Data View
+                        </a>
+                    </li>
+                </th:block>
+                <th:block th:if="${member.patientMapping} == 1">
+                    <li class="page_item page-item-2">
+                        <a href="./patientMappingPage" class="waves-effect">
+                            Manage Patient
+                        </a>
+                    </li>
+                </th:block>
+                <th:block th:if="${member.h_search} == 1">
+                    <li class="page_item page-item-2">
+                        <a href="./healthSearchPage" class="waves-effect">
+                            Health Data Search
+                        </a>
+                    </li>
+                </th:block>
+                <th:block th:if="${member.a_payment} == 1">
+                    <li class="page_item page-item-2">
+                        <a href="./assetPaymentPage" class="waves-effect">
+                            Payment
+                        </a>
+                    </li>
+                </th:block>
+                <th:block th:if="${member.a_withdraw} == 1">
+                    <li class="page_item page-item-2">
+                        <a href="./assetWithdrawPage" class="waves-effect">
+                            Withdraw
+                        </a>
+                    </li>
+                </th:block>
+                <th:block th:if="${member.a_history} == 1">
+                    <li class="page_item page-item-2">
+                        <a href="./assetHistoryPage" class="waves-effect">
+                            Asset History
+                        </a>
+                    </li>
+                </th:block>
+            </ul>
+        </div>
+        <div class="user_info">
+            <div class="user_info_item2">
+                <h4 th:text="'Node Name : ' + ${node_kn}"></h4>
+                <h4 th:text="'User Name : ' +${member.user_name}"></h4>
+            </div>
+            <button type="button" class="user_info_item btn btn-primary" onclick="location.href='./logout'">Edit User
+                Info
+            </button>
+            <button type="button" class="user_info_item btn btn-primary" onclick="location.href='./logout'">Log Out
+            </button>
+        </div>
+    </div>
+</nav>
+<h2 style="margin-top: 90px; margin-bottom: 30px; text-align: center">Health View Page</h2>
+<div class="container" style="width: fit-content; text-align: left">
+    <fieldset>
+        <div class="container" th:switch="${healthViewMessage}">
+            <div th:case=null>
+                <h1>No Have Health Data</h1>
+            </div>
+            <div th:case="*" class="container" style="text-align: center">
+                <p th:text="${healthViewMessage}"></p>
+            </div>
+        </div>
+    </fieldset>
+</div>
+</html>

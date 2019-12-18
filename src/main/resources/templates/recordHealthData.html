@@ -71,7 +71,7 @@
                 "                        <div class=\"control-group\" style=\"float: left; margin-bottom: 3px; margin-left: 3px; vertical-align: middle\">\n" +
                 "                            <p style=\"float: left; padding-top: 5px\">Data Type : </p>\n" +
                 "                            <div class=\"controls\" style=\"float: left; padding-top: 3px\">\n" +
-                "                                <select name=\"data_type\" style=\"float: left\">\n" +
+                "                                <select name=\"data_type\" style=\"float: left\" onchange=\"changeDataType($(this))\">\n" +
                 "                                    <option value=\"Text\">Text</option>\n" +
                 "                                    <option value=\"Number\">Number</option>\n" +
                 "                                    <option value=\"File\">File</option>\n" +
@@ -101,41 +101,80 @@
             thisobj.parent().parent().parent().remove();
         }
 
+        function changeDataType(thisobj) {
+            var type = thisobj.val();
+            thisobj.parent().parent().next().children('div').children('input').val("");
+            if (type == "Text"){
+                thisobj.parent().parent().next().children('div').children('input').removeProp("multiple");
+                thisobj.parent().parent().next().children('div').children('input').prop("type", "text");
+            } else if(type == "Number"){
+                thisobj.parent().parent().next().children('div').children('input').removeProp("multiple");
+                thisobj.parent().parent().next().children('div').children('input').prop("type", "number");
+            } else if(type = "File"){
+                thisobj.parent().parent().next().children('div').children('input').prop("type", "file");
+                thisobj.parent().parent().next().children('div').children('input').prop("multiple", "multiple");
+            }
+        }
+
         function confirm() {
             if (patient_no != null){
                 var HealthDataDetail = [];
 
+                var formData = new FormData();
+
                 $('div[name=DetailData]').each(function (i) {
-                    if ($(this).find('select[name=data_type] option:selected').val() == "Number"){
+                    var type = $(this).find('select[name=data_type] option:selected').val();
+                    if (type == "Number"){
                         HealthDataDetail.push({
                             healthDetailPK : {health_detail_no : i},
                             data_name : $(this).find('input[name=data_name]').val(),
-                            data_type : $(this).find('select[name=data_type] option:selected').val(),
+                            data_type : type,
                             data_num_value : $(this).find('input[name=data_value]').val()
-                        })
-                    }else{
+                        });
+                    }else if(type == "Text"){
                         HealthDataDetail.push({
                             healthDetailPK : {health_detail_no : i},
                             data_name : $(this).find('input[name=data_name]').val(),
-                            data_type : $(this).find('select[name=data_type] option:selected').val(),
+                            data_type : type,
                             data_text_value : $(this).find('input[name=data_value]').val()
-                        })
+                        });
+                    }else if(type == "File"){
+                        // var files = $(this).find('input[name=data_value]').get(0).files;
+                        // var file_names = ""
+                        // for (var j = 0; i< files.length; i++){
+                        //     file_names = file_names + files[j].name
+                        //     if (j != (files.length-1)){
+                        //         file_names = file_names + "|"
+                        //     }
+                        // }
+
+                        HealthDataDetail.push({
+                            healthDetailPK : {health_detail_no : i},
+                            data_name : $(this).find('input[name=data_name]').val(),
+                            data_type : type,
+                            data_text_value : ""
+                            // data_text_value : file_names
+                        });
+                        $($(this).find('input[name=data_value]').get(0).files).each(function (j, file) {
+                            formData.append(i, file);
+                        });
                     }
-                })
+                });
 
                 var details = JSON.stringify(HealthDataDetail);
+
+                formData.append('patient_no', patient_no);
+                formData.append('details', details);
 
                 $.ajaxSettings.traditional = true;
                 $.ajax({
                     async: true,
+                    enctype: 'multipart/form-data',
                     type: 'POST',
                     url: "./addHealthData",
-                    dataType: "json",
-                    data: {
-                        patient_no: patient_no,
-                        details: details
-                    },
-                    contentType: "application/x-www-form-urlencoded; charset=UTF-8",
+                    processData: false,
+                    contentType: false,
+                    data: formData,
                     success: function (data) {
                         if (data.result == "true") {
                             alert("You have successfully update.");
@@ -269,7 +308,7 @@
                         <div class="control-group" style="float: left; margin-bottom: 3px; margin-left: 3px; vertical-align: middle">
                             <p style="float: left; padding-top: 5px">Data Type : </p>
                             <div class="controls" style="float: left; padding-top: 3px">
-                                <select name="data_type" style="float: left">
+                                <select name="data_type" style="float: left" onchange="changeDataType($(this))">
                                     <option value="Text">Text</option>
                                     <option value="Number">Number</option>
                                     <option value="File">File</option>

@@ -1,9 +1,18 @@
 package com.hims.institutional_node.controller
 
+import com.google.gson.JsonArray
+import com.google.gson.JsonElement
 import com.google.gson.JsonObject
+import com.google.gson.JsonParser
+import com.hims.Central_Server.message.ParsingJSON
 import com.hims.institutional_node.*
 import com.hims.institutional_node.Model.*
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.core.io.ByteArrayResource
+import org.springframework.core.io.Resource
+import org.springframework.http.HttpHeaders
+import org.springframework.http.MediaType
+import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.FormHttpMessageConverter
 import org.springframework.http.converter.HttpMessageConverter
 import org.springframework.http.converter.StringHttpMessageConverter
@@ -11,8 +20,12 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
 import org.springframework.util.LinkedMultiValueMap
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.client.RestTemplate
+import java.nio.file.Files
+import java.nio.file.Paths
 import java.sql.Timestamp
+import java.time.format.DateTimeFormatter
 import java.util.*
+import javax.servlet.http.HttpServletRequest
 
 
 @RestController
@@ -31,11 +44,17 @@ internal class MessagingController {
     @Autowired
     internal lateinit var primaryPhysicianDAO: PrimaryPhysicianDAO
     @Autowired
-    internal lateinit var healthDataDao:HealthDAO
+    internal lateinit var healthDao:HealthDAO
     @Autowired
-    internal lateinit var healthDataDetailDAO: HealthDetailDAO
+    internal lateinit var healthDetailDAO: HealthDetailDAO
     @Autowired
     internal lateinit var notaryDataDAO: NotaryDataDAO
+    @Autowired
+    internal lateinit var healthNotaryDAO: HealthNotaryDAO
+    @Autowired
+    internal lateinit var healthViewDAO: HealthViewDAO
+//    @Autowired
+//    internal lateinit var healthFileDAO: HealthFileDAO
     @Autowired
     internal lateinit var testPatientDAO: TestPatientDAO
 
@@ -183,7 +202,7 @@ internal class MessagingController {
     }
 
     @PostMapping("acceptHealth")
-    fun acceptHealth(@RequestParam("node_kn") node_kn: String, @RequestParam("cert_key") cert_key: String, @RequestParam("issuer_health_no") issuer_health_no: Long, @RequestParam("subject_health_no") subject_health_no: Long, @RequestParam("healthNotarys") healthNotarys: Long) {
+    fun acceptHealth(@RequestParam("node_kn") node_kn: String, @RequestParam("cert_key") cert_key: String, @RequestParam("issuer_health_no") issuer_health_no: Long, @RequestParam("subject_health_no") subject_health_no: Long, @RequestParam("healthNotarys") healthNotarys: String) {
         try {
             val converters = ArrayList<HttpMessageConverter<*>>()
             converters.add(FormHttpMessageConverter())
@@ -199,12 +218,26 @@ internal class MessagingController {
             var checkCert = restTemplate.postForObject("http://220.149.87.125:10000/Authentication/CheckCertKey", map, Boolean::class.java)
 
             if (checkCert!!){
-                var health =  healthDataDao.findById(issuer_health_no)
+                var health =  healthDao.findById(issuer_health_no)
                 var healthData = health.get()
-                healthData.subject_health_no = subject_health_no
-                healthDataDao.save(healthData)
-//                var healthNotarys: MutableList<HealthNotary> = mutableListOf()
-                println(healthNotarys)
+                var check_node_kn = nodeMappingDAO.findByPatientNo(healthData.patient_no!!)
+                if (node_kn == check_node_kn){
+                    healthData.subject_health_no = subject_health_no
+                    healthDao.save(healthData)
+
+
+                    var jsonObj = JsonParser().parse(healthNotarys) as JsonArray
+                    for (obj in jsonObj){
+                        println(obj)
+                        var notary = HealthNotary(HealthNotaryPK(issuer_health_no, null), null, null)
+                        notary.healthNotaryPK.notary_kn = obj.asJsonObject.get("notary_kn").toString().replace("\"", "")
+                        notary.notary_data_no = obj.asJsonObject.get("notary_data_no").toString().toLong()
+                        notary.reg_date = Timestamp.valueOf(obj.asJsonObject.get("regDate").toString().replace("\"", ""))
+
+                        println(notary)
+                        healthNotaryDAO.save(notary)
+                    }
+                }
             }
         }catch (e:Exception){
             println(e.toString())
@@ -228,10 +261,13 @@ internal class MessagingController {
             var checkCert = restTemplate.postForObject("http://220.149.87.125:10000/Authentication/CheckCertKey", map, Boolean::class.java)
 
             if (checkCert!!){
-                var health =  healthDataDao.findById(issuer_health_no)
+                var health =  healthDao.findById(issuer_health_no)
                 var healthData = health.get()
-                healthData.subject_health_no = 0
-                healthDataDao.save(healthData)
+                var check_node_kn = nodeMappingDAO.findByPatientNo(healthData.patient_no!!)
+                if (node_kn == check_node_kn){
+                    healthData.subject_health_no = 0
+                    healthDao.save(healthData)
+                }
             }
         }catch (e:Exception){
             println(e.toString())
@@ -264,4 +300,119 @@ internal class MessagingController {
         }
         return notaryData
     }
+
+    @PostMapping("addHealthView")
+    fun addHealthView(@RequestParam("node_kn") node_kn: String, @RequestParam("cert_key") cert_key: String, @RequestParam("health_view_no") health_view_no: Long, @RequestParam("healthView") healthView: String) {
+        println("test11111")
+        try {
+            val converters = ArrayList<HttpMessageConverter<*>>()
+            converters.add(FormHttpMessageConverter())
+            converters.add(StringHttpMessageConverter())
+            converters.add(MappingJackson2HttpMessageConverter())
+
+            val restTemplate = RestTemplate()
+            restTemplate.messageConverters = converters
+            val map = LinkedMultiValueMap<String, String>()
+            map.add("node_kn", node_kn)
+            map.add("cert_key", cert_key)
+
+            var checkCert = restTemplate.postForObject("http://220.149.87.125:10000/Authentication/CheckCertKey", map, Boolean::class.java)
+
+            if (checkCert!!){
+                var healthViewOpt = healthViewDAO.findById(health_view_no)
+                var healthViewModel = healthViewOpt.get()
+
+                var healthJson = JsonParser().parse(healthView) as JsonObject
+
+                println(healthJson)
+
+                var test = healthJson.get("key_no").asString
+                println("test : $test")
+                var test1 = healthJson.get("aes_key").asString
+                println("test1 : $test1")
+                var test2 = healthJson.get("value").asString
+                println("test2 : $test2")
+                map.clear()
+                map.add("node_kn", NodeInfoObject.node_kn)
+                map.add("cert_key", NodeInfoObject.cert_key)
+                map.add("key_no", healthJson.get("key_no").toString())
+                var privateKey = restTemplate.postForObject("http://220.149.87.125:10000/Authentication/getPrivateKey", map, String::class.java)
+                println("privateKey : $privateKey")
+                var aes_key = EncryptionRSA.decrypt(healthJson.get("aes_key").asString, privateKey!!)
+                println("aes_key : $aes_key")
+                var message = EncryptionAES.decryptAES(healthJson.get("value").asString, aes_key)
+                println("message : $message")
+
+                healthViewModel.message = message
+                healthViewModel.accepted = Timestamp(Date().time)
+                healthViewDAO.save(healthViewModel)
+                println(message)
+            }
+        }catch (e:Exception){
+            println(e.toString())
+        }
+    }
+
+//    @PostMapping("getHealthFilesList")
+//    fun getHealthFilesList(@RequestParam("node_kn") node_kn: String, @RequestParam("cert_key") cert_key: String, @RequestParam("health_no") health_no: Long, @RequestParam("health_detail_no") health_detail_no: Long):MutableList<HealthFile>? {
+//        var healthFiles = mutableListOf<HealthFile>()
+//        try {
+//            val converters = ArrayList<HttpMessageConverter<*>>()
+//            converters.add(FormHttpMessageConverter())
+//            converters.add(StringHttpMessageConverter())
+//            converters.add(MappingJackson2HttpMessageConverter())
+//
+//            val restTemplate = RestTemplate()
+//            restTemplate.messageConverters = converters
+//            val map = LinkedMultiValueMap<String, String>()
+//            map.add("node_kn", node_kn)
+//            map.add("cert_key", cert_key)
+//
+//            var checkCert = restTemplate.postForObject("http://220.149.87.125:10000/Authentication/CheckCertKey", map, Boolean::class.java)
+//
+//            if (checkCert!!){
+//                healthFiles = healthFileDAO.getById(health_no, health_detail_no)
+//            }
+//        }catch (e:Exception){
+//            println(e.toString())
+//        }
+//        return healthFiles
+//    }
+//
+//    @GetMapping("getHealthFile")
+//    fun getHealthFile(@RequestParam("node_kn") node_kn: String, @RequestParam("cert_key") cert_key: String, @RequestParam("file_name") file_name: String, request: HttpServletRequest): ResponseEntity<Resource>? {
+//        var result:ResponseEntity<Resource>? = null
+//        try {
+//            val converters = ArrayList<HttpMessageConverter<*>>()
+//            converters.add(FormHttpMessageConverter())
+//            converters.add(StringHttpMessageConverter())
+//            converters.add(MappingJackson2HttpMessageConverter())
+//
+//            val restTemplate = RestTemplate()
+//            restTemplate.messageConverters = converters
+//            val map = LinkedMultiValueMap<String, String>()
+//            map.add("node_kn", node_kn)
+//            map.add("cert_key", cert_key)
+//
+//            var checkCert = restTemplate.postForObject("http://220.149.87.125:10000/Authentication/CheckCertKey", map, Boolean::class.java)
+//
+//            if (checkCert!!){
+//                var healthFile = healthFileDAO.findById(file_name)
+//                var health = healthDao.findById(healthFile.get().health_no!!)
+//                var nodeMapping = nodeMappingDAO.findById(node_kn)
+//                if (health.get().patient_no?.equals(nodeMapping.get().patient_no)!!){
+//                    var path = Paths.get(healthFile.get().file_loc+healthFile.get().file_name).normalize()
+//                    var resource = ByteArrayResource(Files.readAllBytes(path))
+//
+//                    result = ResponseEntity.ok()
+//                            .contentType(MediaType.parseMediaType(request.servletContext.getMimeType(resource.file.absolutePath)))
+//                            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
+//                            .body(resource)
+//                }
+//            }
+//        }catch (e:Exception){
+//            println(e.toString())
+//        }
+//        return result
+//    }
 }
